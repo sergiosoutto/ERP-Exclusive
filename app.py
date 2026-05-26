@@ -50,10 +50,12 @@ def inject_custom_css():
             background-color: var(--bg-color) !important;
         }
 
-        /* Esconder Menu Hamburguer e Footer */
+        /* Esconder Menu Hamburguer e Footer, mantendo a seta do sidebar visível */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
-        header {visibility: hidden;}
+        header {
+            background-color: transparent !important;
+        }
 
         /* Estilo dos Cartões (Cards) - UX Master */
         .premium-card {

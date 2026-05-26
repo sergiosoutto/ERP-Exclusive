@@ -123,7 +123,7 @@ def render_fast_launch():
         
         # Seleção de Cliente
         cliente_opcoes = ["-- Selecione um Cliente --"] + [c.nome for c in clientes]
-        col_c1, col_c2 = st.columns([2.5, 1], vertical_alignment="end")
+        col_c1, col_c2 = st.columns([2.5, 1], vertical_alignment="bottom")
         cliente_selecionado = col_c1.selectbox("Cliente", cliente_opcoes)
         
         # Botão para abrir o popup de novo cliente
@@ -133,7 +133,7 @@ def render_fast_launch():
         st.markdown("---")
         
         # Adicionar Item
-        col_tipo, col_item, col_valor = st.columns([1, 2, 1], vertical_alignment="end")
+        col_tipo, col_item, col_valor = st.columns([1, 2, 1], vertical_alignment="bottom")
         tipo_item = col_tipo.selectbox("Tipo", ["Serviço", "Produto"])
         
         item_opcoes = []
