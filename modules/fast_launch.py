@@ -5,10 +5,10 @@ from datetime import datetime, timedelta, timezone
 # Tratamento para st.dialog independente da versão exata 1.34/1.35+
 dialog_decorator = st.dialog if hasattr(st, "dialog") else st.experimental_dialog
 
-# Helper para retornar hora no fuso horário do usuário (UTC-3 - Brasília)
+# Helper para retornar hora no fuso horário do usuário (UTC-3 - Brasília) como ingênua (naive)
 def obter_hora_local():
     fuso_brasil = timezone(timedelta(hours=-3))
-    return datetime.now(fuso_brasil)
+    return datetime.now(fuso_brasil).replace(tzinfo=None)
 
 # Helper para formatar telefones de forma inteligente
 def formatar_telefone(tel_str):
@@ -20,7 +20,9 @@ def formatar_telefone(tel_str):
     elif len(digitos) == 9:
         return f"(61) {digitos[:5]}-{digitos[5:]}"
     elif len(digitos) == 8:
-        return f"(61) 9{digitos[:4]}-{digitos[4:]}"
+        if digitos.startswith('9'):
+            return f"(61) 9{digitos[1:5]}-{digitos[5:]}"
+        return f"(61) {digitos[:4]}-{digitos[4:]}"
     return tel_str
 
 # Helper de ícones dourados elegantes (Referência: Imagem 1)
@@ -32,11 +34,20 @@ def gold_icon(icon_name):
         "diamond": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><polygon points="6 3 18 3 22 9 12 22 2 9 6 3"></polygon></svg>',
         "box": '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>',
         "calendar": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>',
-        "clock": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>'
+        "clock": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+        "lightning": '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
+        "car": '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><circle cx="17" cy="17" r="2"></circle><path d="M13 17H9"></path></svg>',
+        "plus": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>',
+        "edit": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>',
+        "trash": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>',
+        "check": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+        "alert": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+        "settings": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2 2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.5 1z"></path></svg>'
     }
     return icons.get(icon_name, "")
 
-@dialog_decorator("👤 Cadastrar Novo Cliente")
+
+@dialog_decorator("Cadastrar Novo Cliente")
 def dialog_novo_cliente():
     db = next(get_db())
     # Gerar código automático e sequencial
@@ -46,10 +57,8 @@ def dialog_novo_cliente():
     st.info(f"Código do Cliente: **{codigo_seq}**")
     novo_nome = st.text_input("Nome do Cliente")
     
-    # Campo de telefone dividido para travar o DDD 61 e permitir tabulação direta
-    col_ddd, col_tel = st.columns([1, 3], vertical_alignment="bottom")
-    col_ddd.text_input("DDD", value="61", disabled=True)
-    novo_tel_num = col_tel.text_input("Telefone", placeholder="99571-7073")
+    # Campo de telefone usando o parâmetro prefix do text_input (DDD 61 travado)
+    novo_tel_num = st.text_input("Telefone", placeholder="99571-7073", prefix="(61)")
     
     nova_placa = st.text_input("Placa do Veículo")
     novo_modelo = st.text_input("Modelo do Veículo")
@@ -70,12 +79,12 @@ def dialog_novo_cliente():
             st.success(f"Cliente {codigo_seq} cadastrado com sucesso!")
             st.rerun()
 
-@dialog_decorator("⚠️ Cancelar Atendimento")
+@dialog_decorator("Cancelar Atendimento")
 def dialog_cancelar_atendimento(at_id):
     st.warning("Para cancelar este serviço, é necessária a senha do gerente.")
     senha = st.text_input("Senha do Gerente", type="password", key=f"senha_canc_{at_id}")
     if st.button("Confirmar Cancelamento", type="primary", use_container_width=True):
-        if senha == "admin": # Alterado para "admin"
+        if senha == "admin":
             db = next(get_db())
             at = db.query(Atendimento).filter(Atendimento.id == at_id).first()
             if at:
@@ -86,7 +95,7 @@ def dialog_cancelar_atendimento(at_id):
         else:
             st.error("Senha incorreta!")
 
-@dialog_decorator("✏️ Editar Atendimento")
+@dialog_decorator("Editar Atendimento")
 def dialog_editar_atendimento(at_id):
     db = next(get_db())
     at = db.query(Atendimento).filter(Atendimento.id == at_id).first()
@@ -97,7 +106,7 @@ def dialog_editar_atendimento(at_id):
     
     # Exige senha do gerente para QUALQUER alteração/remoção
     senha_gerente = st.text_input("Senha do Gerente para Alterações", type="password", key=f"edit_senha_{at_id}")
-    gerente_autorizado = (senha_gerente == "admin") # Alterado para "admin"
+    gerente_autorizado = (senha_gerente == "admin")
     
     if not gerente_autorizado:
         st.warning("⚠️ Insira a senha do gerente ('admin') para liberar a edição ou remoção de itens.")
@@ -117,11 +126,12 @@ def dialog_editar_atendimento(at_id):
         col1, col2 = st.columns([3, 1], vertical_alignment="center")
         col1.write(f"- {i.tipo}: {nome_ref} (R$ {i.valor_cobrado:.2f})")
         if col2.button("Remover", key=f"rem_{i.id}", use_container_width=True, disabled=not gerente_autorizado):
-            db.delete(i)
-            # Recalcula total
-            at.valor_total -= i.valor_cobrado
-            db.commit()
-            st.rerun()
+            if senha_gerente == "admin":
+                db.delete(i)
+                # Recalcula total
+                at.valor_total -= i.valor_cobrado
+                db.commit()
+                st.rerun()
             
     st.markdown("---")
     st.markdown("#### Adicionar Novo Item")
@@ -137,20 +147,21 @@ def dialog_editar_atendimento(at_id):
     valor_novo = st.number_input("Valor", min_value=0.0, key="edit_valor")
     
     if st.button("Adicionar Item ao Atendimento Existente", use_container_width=True, disabled=not gerente_autorizado):
-        ref_id = 0
-        if tipo_novo == "Serviço":
-            ref_id = db.query(Servico).filter(Servico.nome == item_novo).first().id
-        else:
-            ref_id = db.query(Produto).filter(Produto.nome == item_novo).first().id
-            
-        n_item = ItemAtendimento(atendimento_id=at.id, tipo=tipo_novo, referencia_id=ref_id, valor_cobrado=valor_novo)
-        db.add(n_item)
-        at.valor_total += valor_novo
-        db.commit()
-        st.success("Item adicionado!")
-        st.rerun()
+        if senha_gerente == "admin":
+            ref_id = 0
+            if tipo_novo == "Serviço":
+                ref_id = db.query(Servico).filter(Servico.nome == item_novo).first().id
+            else:
+                ref_id = db.query(Produto).filter(Produto.nome == item_novo).first().id
+                
+            n_item = ItemAtendimento(atendimento_id=at.id, tipo=tipo_novo, referencia_id=ref_id, valor_cobrado=valor_novo)
+            db.add(n_item)
+            at.valor_total += valor_novo
+            db.commit()
+            st.success("Item adicionado!")
+            st.rerun()
 
-@dialog_decorator("✅ Concluir Atendimento")
+@dialog_decorator("Concluir Atendimento")
 def dialog_concluir_atendimento(at_id):
     db = next(get_db())
     at = db.query(Atendimento).filter(Atendimento.id == at_id).first()
@@ -158,7 +169,7 @@ def dialog_concluir_atendimento(at_id):
         return
         
     st.write(f"Deseja realmente concluir a **{at.codigo}**?")
-    obs = st.text_area("Observações (Opcional)", placeholder="Digite alguma observação sobre a entrega...")
+    obs = st.text_input("Observação (Opcional)", placeholder="Ex: Higienização impecável concluída...")
     
     if st.button("Confirmar Conclusão", type="primary", use_container_width=True):
         at.status = "Finalizado"
@@ -166,25 +177,28 @@ def dialog_concluir_atendimento(at_id):
         at.observacoes = obs
         db.commit()
         
-        # Salva a mensagem no estado da sessão para persistir e não sumir rápido
+        # Salva a mensagem no estado da sessão para persistir no diálogo de sucesso
         st.session_state['success_msg'] = f"Atendimento {at.codigo} concluído com sucesso!"
         st.rerun()
 
+@dialog_decorator("Lançamento Confirmado")
+def dialog_sucesso_lancamento(mensagem):
+    st.success(mensagem)
+    if st.button("Entendido", type="primary", use_container_width=True):
+        st.session_state['success_msg'] = None
+        st.rerun()
+
 def render_fast_launch():
-    # Mensagem de confirmação persistente
+    # Mensagem de confirmação persistente em modal
     if 'success_msg' not in st.session_state:
         st.session_state['success_msg'] = None
         
     if st.session_state['success_msg']:
-        st.success(st.session_state['success_msg'])
-        # Deixa o botão de fechar para o usuário decidir quando limpar, ou limpa no próximo clique
-        if st.button("Limpar aviso"):
-            st.session_state['success_msg'] = None
-            st.rerun()
+        dialog_sucesso_lancamento(st.session_state['success_msg'])
 
     col_t, col_s = st.columns([2, 1], vertical_alignment="center")
     with col_t:
-        st.markdown("<h2 style='margin:0; padding:0; font-size: 24px;'>⚡ Fluxo do dia</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='margin:0; padding:0; font-size: 24px;'>{gold_icon('lightning')} Fluxo do dia</h2>", unsafe_allow_html=True)
     with col_s:
         st.markdown("<div style='background-color: var(--success); color: white; padding: 6px 10px; border-radius: 20px; text-align: center; font-weight: bold; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>🟢 CAIXA ABERTO</div>", unsafe_allow_html=True)
     
@@ -202,15 +216,15 @@ def render_fast_launch():
     servicos = db.query(Servico).all()
     produtos = db.query(Produto).all()
     
-    # Estrutura de Abas
-    tab1, tab2, tab3 = st.tabs(["Lançamento", "Em andamento", "Finalizado"])
+    # Estrutura de Abas (Lançamento -> Novo Atendimento, Finalizado -> Concluído)
+    tab1, tab2, tab3 = st.tabs(["Novo Atendimento", "Em andamento", "Concluído"])
     
     # ==========================================
-    # ABA 1: Lançamento
+    # ABA 1: Novo Atendimento
     # ==========================================
     with tab1:
         with st.container(border=True):
-            st.markdown(f"### {gold_icon('user')} Novo Atendimento") # Título renomeado e com ícone elegante
+            st.markdown(f"<h3 style='margin:0 0 12px 0; font-size:18px;'>{gold_icon('user')} Novo Atendimento</h3>", unsafe_allow_html=True)
             
             # Passo 1: Selecionar Cliente
             cliente_atendimentos = {}
@@ -239,7 +253,7 @@ def render_fast_launch():
             cliente_selecionado = col_c1.selectbox("Selecione o Cliente", cliente_opcoes, index=0, label_visibility="collapsed")
             
             # Botão para abrir o popup de novo cliente
-            if col_c2.button("➕ Novo Cliente", use_container_width=True):
+            if col_c2.button("+ Novo Cliente", use_container_width=True):
                 dialog_novo_cliente()
                 
             st.markdown("---")
@@ -271,75 +285,156 @@ def render_fast_launch():
             
             st.markdown("---")
             
-            # Passo 3: Forma de Pagamento em Botões/Quadrados elegantes lado a lado
+            # Passo 3: Forma de Pagamento em Botões/Quadrados elegantes lado a lado (Débito, Pix, Crédito, Dinheiro)
             st.markdown(f"<label style='font-size:14px; font-weight:500; color:var(--text-main);'>{gold_icon('payment')} Selecionar Forma de Pagamento</label>", unsafe_allow_html=True)
-            col_p1, col_p2, col_p3 = st.columns(3)
+            
+            st.markdown("""
+            <style>
+                .payment-method-container div[data-testid="column"] button {
+                    height: 60px !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    border-radius: 10px !important;
+                    border: 1.5px solid #86868B !important;
+                    background-color: #FFFFFF !important;
+                    color: #1D1D1F !important;
+                    font-size: 14px !important;
+                    font-weight: 600 !important;
+                    transition: all 0.2s ease-in-out !important;
+                }
+                .payment-method-container div[data-testid="column"] button:hover {
+                    border-color: #007AFF !important;
+                    background-color: #F5F5F7 !important;
+                }
+                .payment-method-container div[data-testid="column"] button[kind="primary"] {
+                    background-color: #007AFF !important;
+                    border-color: #007AFF !important;
+                    color: #FFFFFF !important;
+                    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2) !important;
+                }
+                .payment-method-container div[data-testid="column"] button[kind="primary"] p,
+                .payment-method-container div[data-testid="column"] button[kind="primary"] span {
+                    color: #FFFFFF !important;
+                }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            st.markdown('<div class="payment-method-container">', unsafe_allow_html=True)
+            col_p1, col_p2, col_p3, col_p4 = st.columns(4)
             
             with col_p1:
                 is_sel = st.session_state['selected_payment'] == 'Débito'
-                if st.button("💳\nDébito", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_deb"):
+                if st.button("Débito", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_deb"):
                     st.session_state['selected_payment'] = 'Débito'
                     st.rerun()
             with col_p2:
                 is_sel = st.session_state['selected_payment'] == 'Pix'
-                if st.button("📱\nPix", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_pix"):
+                if st.button("Pix", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_pix"):
                     st.session_state['selected_payment'] = 'Pix'
                     st.rerun()
             with col_p3:
                 is_sel = st.session_state['selected_payment'] == 'Crédito'
-                if st.button("💵\nCrédito", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_cred"):
+                if st.button("Crédito", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_cred"):
                     st.session_state['selected_payment'] = 'Crédito'
                     st.rerun()
+            with col_p4:
+                is_sel = st.session_state['selected_payment'] == 'Dinheiro'
+                if st.button("Dinheiro", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_din"):
+                    st.session_state['selected_payment'] = 'Dinheiro'
+                    st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
             
             st.markdown("---")
             
-            # Botão de Lançamento Direto (Um clique!)
-            if st.button("🚀 INICIAR LAVAGEM (Enviar ao Pátio)", type="primary", use_container_width=True):
-                if cliente_selecionado and not cliente_selecionado.startswith("-- Selecione"):
-                    # Extrair código do cliente
-                    cli_codigo = cliente_selecionado.split(" |")[0]
-                    cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
-                    cliente_id = cliente_ref.id if cliente_ref else None
+            # Passo 4: Lançamento (Permite venda direta ou patio para produtos)
+            if tipo_venda == "Produto":
+                col_b1, col_b2 = st.columns(2)
+                with col_b1:
+                    btn_patio = st.button("Enviar ao Pátio", type="secondary", use_container_width=True, key="btn_prod_patio")
+                with col_b2:
+                    btn_direta = st.button("Finalizar Venda Direta", type="primary", use_container_width=True, key="btn_prod_direta")
                     
-                    # Gerar codigo sequencial OS
-                    qtd = db.query(Atendimento).count()
-                    codigo_seq = f"OS-{qtd+1:04d}"
-                    
-                    novo_atendimento = Atendimento(
-                        codigo=codigo_seq,
-                        cliente_id=cliente_id,
-                        status="Em andamento",
-                        desconto_total=0.0,
-                        valor_total=valor_final,
-                        forma_pagamento=st.session_state['selected_payment'],
-                        data_criacao=obter_hora_local().isoformat() # Fuso Brasília
-                    )
-                    db.add(novo_atendimento)
-                    db.flush()
-                    
-                    # Adicionar o item (pode ser serviço ou produto)
-                    ref_id = 0
-                    if tipo_venda == "Serviço":
-                        item_ref = db.query(Servico).filter(Servico.nome == item_selecionado).first()
-                        ref_id = item_ref.id if item_ref else 0
-                    else:
+                if btn_patio or btn_direta:
+                    if cliente_selecionado and not cliente_selecionado.startswith("-- Selecione"):
+                        cli_codigo = cliente_selecionado.split(" |")[0]
+                        cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
+                        cliente_id = cliente_ref.id if cliente_ref else None
+                        
+                        qtd = db.query(Atendimento).count()
+                        codigo_seq = f"OS-{qtd+1:04d}"
+                        
+                        status_at = "Em andamento" if btn_patio else "Finalizado"
+                        conclusao_at = None if btn_patio else obter_hora_local().isoformat()
+                        
+                        novo_atendimento = Atendimento(
+                            codigo=codigo_seq,
+                            cliente_id=cliente_id,
+                            status=status_at,
+                            desconto_total=0.0,
+                            valor_total=valor_final,
+                            forma_pagamento=st.session_state['selected_payment'],
+                            data_criacao=obter_hora_local().isoformat(),
+                            data_conclusao=conclusao_at
+                        )
+                        db.add(novo_atendimento)
+                        db.flush()
+                        
                         item_ref = db.query(Produto).filter(Produto.nome == item_selecionado).first()
                         ref_id = item_ref.id if item_ref else 0
+                        if ref_id > 0:
+                            novo_item = ItemAtendimento(
+                                atendimento_id=novo_atendimento.id,
+                                tipo="Produto",
+                                referencia_id=ref_id,
+                                valor_cobrado=valor_final
+                            )
+                            db.add(novo_item)
                         
-                    if ref_id > 0:
-                        novo_item = ItemAtendimento(
-                            atendimento_id=novo_atendimento.id,
-                            tipo=tipo_venda,
-                            referencia_id=ref_id,
-                            valor_cobrado=valor_final
+                        db.commit()
+                        st.session_state['success_msg'] = f"Venda de {item_selecionado} ({codigo_seq}) registrada com sucesso!"
+                        st.rerun()
+                    else:
+                        st.error("Por favor, selecione um cliente cadastrado ou clique em + Novo Cliente para cadastrar um novo.")
+            else:
+                if st.button("Iniciar Lavagem (Enviar ao Pátio)", type="primary", use_container_width=True, key="btn_serv_patio"):
+                    if cliente_selecionado and not cliente_selecionado.startswith("-- Selecione"):
+                        cli_codigo = cliente_selecionado.split(" |")[0]
+                        cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
+                        cliente_id = cliente_ref.id if cliente_ref else None
+                        
+                        qtd = db.query(Atendimento).count()
+                        codigo_seq = f"OS-{qtd+1:04d}"
+                        
+                        novo_atendimento = Atendimento(
+                            codigo=codigo_seq,
+                            cliente_id=cliente_id,
+                            status="Em andamento",
+                            desconto_total=0.0,
+                            valor_total=valor_final,
+                            forma_pagamento=st.session_state['selected_payment'],
+                            data_criacao=obter_hora_local().isoformat()
                         )
-                        db.add(novo_item)
-                    
-                    db.commit()
-                    st.session_state['success_msg'] = f"Venda/Atendimento {codigo_seq} lançado com sucesso no pátio!"
-                    st.rerun()
-                else:
-                    st.error("Por favor, selecione um cliente cadastrado ou clique em ➕ Novo Cliente para cadastrar um novo.")
+                        db.add(novo_atendimento)
+                        db.flush()
+                        
+                        item_ref = db.query(Servico).filter(Servico.nome == item_selecionado).first()
+                        ref_id = item_ref.id if item_ref else 0
+                        if ref_id > 0:
+                            novo_item = ItemAtendimento(
+                                atendimento_id=novo_atendimento.id,
+                                tipo="Serviço",
+                                referencia_id=ref_id,
+                                valor_cobrado=valor_final
+                            )
+                            db.add(novo_item)
+                        
+                        db.commit()
+                        st.session_state['success_msg'] = f"Atendimento {codigo_seq} lançado com sucesso no pátio!"
+                        st.rerun()
+                    else:
+                        st.error("Por favor, selecione um cliente cadastrado ou clique em + Novo Cliente para cadastrar um novo.")
                     
         # Passo 4: Opções Avançadas (Carrinho, Descontos, Produtos)
         with st.expander("⚙️ Mais Opções (Vendas complexas, Vários itens, Produtos ou Descontos)"):
@@ -457,16 +552,13 @@ def render_fast_launch():
                             st.session_state['pdv_cart'] = [] # Limpa o carrinho
                             st.session_state['success_msg'] = f"Atendimento {codigo_seq} lançado com sucesso no pátio!"
                             st.rerun()
-                    
                     if st.button("Limpar Carrinho", key="cart_clear_btn"):
                         st.session_state['pdv_cart'] = []
                         st.rerun()
-
-    # ==========================================
     # ABA 2: Em Andamento
     # ==========================================
     with tab2:
-        st.markdown("### Pátio (Em Andamento)")
+        st.markdown(f"<h3 style='margin:12px 0;'>{gold_icon('car')} Pátio (Em Andamento)</h3>", unsafe_allow_html=True)
         atendimentos_abertos = db.query(Atendimento).filter(Atendimento.status == "Em andamento").all()
         
         if not atendimentos_abertos:
@@ -476,9 +568,9 @@ def render_fast_launch():
             cliente_at = db.query(Cliente).filter(Cliente.id == at.cliente_id).first()
             itens_at = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == at.id).all()
             
-            # Calcular horário de entrada e tempo decorrido
+            # Calcular horário de entrada e tempo decorrido (usando naive UTC-3 datetimes)
             try:
-                entrada_dt = datetime.fromisoformat(at.data_criacao)
+                entrada_dt = datetime.fromisoformat(at.data_criacao).replace(tzinfo=None)
                 decorrido = obter_hora_local() - entrada_dt
                 horas, resto = divmod(decorrido.total_seconds(), 3600)
                 minutos, _ = divmod(resto, 60)
@@ -497,7 +589,7 @@ def render_fast_launch():
                     cliente_nome = cliente_at.nome if cliente_at else 'Desconhecido'
                     cliente_veiculo = f"{cliente_at.modelo_veiculo} - {cliente_at.placa_veiculo}" if (cliente_at and cliente_at.modelo_veiculo) else (cliente_at.placa_veiculo if cliente_at else '')
                     
-                    st.markdown(f"<div style='margin-bottom: 2px; font-size: 15px; font-weight: bold; color: var(--text-main);'>🚘 [{at.codigo}] {cliente_nome}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='margin-bottom: 2px; font-size: 15px; font-weight: bold; color: var(--text-main);'>{gold_icon('car')} [{at.codigo}] {cliente_nome}</div>", unsafe_allow_html=True)
                     st.markdown(f"<div style='margin-bottom: 2px; font-size: 12px; color: var(--text-sec);'><b>Veículo:</b> {cliente_veiculo}</div>", unsafe_allow_html=True)
                     st.markdown(f"<div style='margin-bottom: 2px; font-size: 12px; color: var(--text-sec);'>{gold_icon('clock')} <b>Entrada:</b> {hora_entrada} <span style='color: var(--warning); font-weight: bold;'>({tempo_decorrido})</span></div>", unsafe_allow_html=True)
                     st.markdown(f"<div style='margin-bottom: 2px; font-size: 12px; color: var(--text-sec);'><b>Total:</b> R$ {at.valor_total:.2f} | <b>Pgto:</b> {at.forma_pagamento}</div>", unsafe_allow_html=True)
@@ -506,10 +598,10 @@ def render_fast_launch():
                     for i in itens_at:
                         if i.tipo == "Serviço":
                             s = db.query(Servico).filter(Servico.id == i.referencia_id).first()
-                            detalhes.append(f"🛠️ {s.nome if s else 'Serviço'}")
+                            detalhes.append(f"{gold_icon('service')} {s.nome if s else 'Serviço'}")
                         else:
                             p = db.query(Produto).filter(Produto.id == i.referencia_id).first()
-                            detalhes.append(f"📦 {p.nome if p else 'Produto'}")
+                            detalhes.append(f"{gold_icon('box')} {p.nome if p else 'Produto'}")
                     st.markdown(f"<div style='font-size: 12px; color: var(--text-sec);'>{' | '.join(detalhes)}</div>", unsafe_allow_html=True)
                     
                 with col2:
@@ -524,10 +616,10 @@ def render_fast_launch():
                         dialog_cancelar_atendimento(at.id)
 
     # ==========================================
-    # ABA 3: Finalizado
+    # ABA 3: Concluído (Histórico)
     # ==========================================
     with tab3:
-        st.markdown("### Histórico de Atendimentos")
+        st.markdown(f"<h3 style='margin:12px 0;'>{gold_icon('calendar')} Histórico de Atendimentos</h3>", unsafe_allow_html=True)
         
         # Filtros
         with st.container(border=True):
@@ -535,8 +627,8 @@ def render_fast_launch():
             filtro_cliente = col_f1.selectbox("Filtrar por Cliente", ["Todos"] + [c.nome for c in clientes if c.codigo != "CLI-0000"])
             filtro_status = col_f2.selectbox("Status", ["Finalizado", "Cancelado"])
         
-        # Ordenação de cima para baixo pelo último serviço concluído (ID Decrescente)
-        query_finalizados = db.query(Atendimento).filter(Atendimento.status == filtro_status).order_by(Atendimento.id.desc())
+        # Ordenação de cima para baixo pelo último serviço concluído (data_conclusao desc)
+        query_finalizados = db.query(Atendimento).filter(Atendimento.status == filtro_status).order_by(Atendimento.data_conclusao.desc(), Atendimento.id.desc())
         if filtro_cliente != "Todos":
             c_ref = db.query(Cliente).filter(Cliente.nome == filtro_cliente).first()
             if c_ref:
@@ -550,12 +642,12 @@ def render_fast_launch():
         for at in atendimentos_finalizados:
             cliente_at = db.query(Cliente).filter(Cliente.id == at.cliente_id).first()
             
-            # Calcular entrada, saída e duração para os concluídos
+            # Calcular entrada, saída e duração (usando naive UTC-3 datetimes)
             try:
-                entrada_dt = datetime.fromisoformat(at.data_criacao)
+                entrada_dt = datetime.fromisoformat(at.data_criacao).replace(tzinfo=None)
                 hora_entrada = entrada_dt.strftime("%d/%m %H:%M")
                 if at.data_conclusao:
-                    conclusao_dt = datetime.fromisoformat(at.data_conclusao)
+                    conclusao_dt = datetime.fromisoformat(at.data_conclusao).replace(tzinfo=None)
                     hora_saida = conclusao_dt.strftime("%H:%M")
                     duracao = conclusao_dt - entrada_dt
                     horas, resto = divmod(duracao.total_seconds(), 3600)
@@ -575,17 +667,25 @@ def render_fast_launch():
             cliente_nome = cliente_at.nome if cliente_at else 'Desconhecido'
             cliente_veiculo = f"{cliente_at.modelo_veiculo} - {cliente_at.placa_veiculo}" if (cliente_at and cliente_at.modelo_veiculo) else (cliente_at.placa_veiculo if cliente_at else '')
             
-            with st.container(border=True):
-                # Altura menor e design super compacto para histórico
-                status_cor = "color: var(--success);" if at.status == "Finalizado" else "color: var(--danger);"
-                st.markdown(f"<div style='margin-bottom: 2px; font-size: 14px; font-weight: bold; {status_cor}'>● {at.status}</div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='margin-bottom: 2px; font-size: 15px; font-weight: bold; color: var(--text-main);'>🚘 [{at.codigo}] {cliente_nome}</div>", unsafe_allow_html=True)
-                st.markdown(f"<div style='margin-bottom: 2px; font-size: 12px; color: var(--text-sec);'><b>Veículo:</b> {cliente_veiculo} | <b>Total:</b> R$ {at.valor_total:.2f} | <b>Pgto:</b> {at.forma_pagamento}</div>", unsafe_allow_html=True)
-                
-                if at.status == "Finalizado":
-                    st.markdown(f"<div style='margin-bottom: 2px; font-size: 12px; color: var(--text-sec);'>{gold_icon('clock')} <b>Entrada:</b> {hora_entrada} | <b>Saída:</b> {hora_saida} <i>(Duração: {duracao_str})</i></div>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"<div style='margin-bottom: 2px; font-size: 12px; color: var(--text-sec);'>{gold_icon('calendar')} <b>Data:</b> {hora_entrada}</div>", unsafe_allow_html=True)
-                    
-                if at.observacoes:
-                    st.markdown(f"<div style='font-size: 11px; color: #86868B; font-style: italic; background-color: #F5F5F7; padding: 4px 8px; border-radius: 4px; margin-top: 4px;'>Obs: {at.observacoes}</div>", unsafe_allow_html=True)
+            # Layout super compacto em HTML para o histórico
+            obs_html = f"<div style='font-size: 11px; color: #86868B; font-style: italic; background-color: #F5F5F7; padding: 4px 8px; border-radius: 4px; margin-top: 4px;'>Obs: {at.observacoes}</div>" if at.observacoes else ""
+            status_dot = f"<span style='color: var(--success); font-weight: bold;'>● Concluído</span>" if at.status == "Finalizado" else f"<span style='color: var(--danger); font-weight: bold;'>● Cancelado</span>"
+            
+            tempo_html = ""
+            if at.status == "Finalizado":
+                tempo_html = f"| {gold_icon('clock')} <b>Entrada:</b> {hora_entrada} | <b>Saída:</b> {hora_saida} <i>({duracao_str})</i>"
+            else:
+                tempo_html = f"| {gold_icon('calendar')} <b>Data:</b> {hora_entrada}"
+
+            st.markdown(f"""
+            <div style="background-color: #FFFFFF; border: 1px solid #E5E5EA; border-radius: 8px; padding: 6px 12px; margin-bottom: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.01);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                    <span style="font-size: 14px; font-weight: bold; color: #1D1D1F;">{gold_icon('car')} [{at.codigo}] {cliente_nome}</span>
+                    <span style="font-size: 12px;">{status_dot}</span>
+                </div>
+                <div style="font-size: 12px; color: #86868B; line-height: 1.4;">
+                    <b>Veículo:</b> {cliente_veiculo} | <b>Total:</b> R$ {at.valor_total:.2f} | <b>Pgto:</b> {at.forma_pagamento} {tempo_html}
+                </div>
+                {obs_html}
+            </div>
+            """, unsafe_allow_html=True)
