@@ -57,8 +57,8 @@ def dialog_novo_cliente():
     st.info(f"Código do Cliente: **{codigo_seq}**")
     novo_nome = st.text_input("Nome do Cliente")
     
-    # Campo de telefone usando o parâmetro prefix do text_input (DDD 61 travado)
-    novo_tel_num = st.text_input("Telefone", placeholder="99571-7073", prefix="(61)")
+    # Campo de telefone pré-preenchido com o DDD 61 (evitando o parâmetro prefix que crasha no Streamlit Cloud antigo)
+    novo_tel_num = st.text_input("Telefone", value="(61) ", placeholder="99571-7073")
     
     nova_placa = st.text_input("Placa do Veículo")
     novo_modelo = st.text_input("Modelo do Veículo")
@@ -196,17 +196,50 @@ def render_fast_launch():
     if st.session_state['success_msg']:
         dialog_sucesso_lancamento(st.session_state['success_msg'])
 
-    col_t, col_s = st.columns([2, 1], vertical_alignment="center")
-    with col_t:
-        st.markdown(f"<h2 style='margin:0; padding:0; font-size: 24px;'>{gold_icon('lightning')} Fluxo do dia</h2>", unsafe_allow_html=True)
-    with col_s:
-        st.markdown("<div style='background-color: var(--success); color: white; padding: 6px 10px; border-radius: 20px; text-align: center; font-weight: bold; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>🟢 CAIXA ABERTO</div>", unsafe_allow_html=True)
-    
     # Inicializando estados
+    if 'caixa_aberto' not in st.session_state:
+        st.session_state['caixa_aberto'] = True
     if 'pdv_cart' not in st.session_state:
         st.session_state['pdv_cart'] = []
     if 'selected_payment' not in st.session_state:
         st.session_state['selected_payment'] = 'Pix'
+
+    col_t, col_s = st.columns([1.8, 1.2], vertical_alignment="center")
+    with col_t:
+        st.markdown(f"<h2 style='margin:0; padding:0; font-size: 24px;'>{gold_icon('lightning')} Fluxo do dia</h2>", unsafe_allow_html=True)
+    with col_s:
+        # Toggle Caixa Aberto/Fechado (estilizado como um pill elegante)
+        caixa_status = st.session_state.get('caixa_aberto', True)
+        btn_class = "caixa-aberto-btn" if caixa_status else "caixa-fechado-btn"
+        
+        st.markdown(f"""
+        <style>
+            .caixa-btn-container button {{
+                border-radius: 20px !important;
+                font-weight: bold !important;
+                font-size: 11px !important;
+                padding: 4px 10px !important;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+                border: none !important;
+                color: white !important;
+                height: 32px !important;
+                white-space: nowrap !important;
+            }}
+            .caixa-aberto-btn button {{
+                background-color: #34C759 !important;
+            }}
+            .caixa-fechado-btn button {{
+                background-color: #FF3B30 !important;
+            }}
+        </style>
+        """, unsafe_allow_html=True)
+        
+        st.markdown(f'<div class="caixa-btn-container {btn_class}">', unsafe_allow_html=True)
+        label = "🟢 CAIXA ABERTO" if caixa_status else "🔴 CAIXA FECHADO"
+        if st.button(label, use_container_width=True, key="btn_caixa_toggle"):
+            st.session_state['caixa_aberto'] = not caixa_status
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
     
     # Obter sessão do DB
     db = next(get_db())
@@ -223,6 +256,11 @@ def render_fast_launch():
     # ABA 1: Novo Atendimento
     # ==========================================
     with tab1:
+        # Alerta e verificação se o caixa estiver fechado
+        caixa_aberto = st.session_state.get('caixa_aberto', True)
+        if not caixa_aberto:
+            st.warning("⚠️ Caixa Fechado! Lançamentos desabilitados. Abra o caixa no botão verde no topo direito para continuar.")
+            
         with st.container(border=True):
             st.markdown(f"<h3 style='margin:0 0 12px 0; font-size:18px;'>{gold_icon('user')} Novo Atendimento</h3>", unsafe_allow_html=True)
             
@@ -250,21 +288,21 @@ def render_fast_launch():
             
             st.markdown(f"<label style='font-size:14px; font-weight:500; color:var(--text-main);'>{gold_icon('user')} Selecionar Cliente</label>", unsafe_allow_html=True)
             col_c1, col_c2 = st.columns([2.5, 1], vertical_alignment="bottom")
-            cliente_selecionado = col_c1.selectbox("Selecione o Cliente", cliente_opcoes, index=0, label_visibility="collapsed")
+            cliente_selecionado = col_c1.selectbox("Selecione o Cliente", cliente_opcoes, index=0, label_visibility="collapsed", disabled=not caixa_aberto)
             
             # Botão para abrir o popup de novo cliente
-            if col_c2.button("+ Novo Cliente", use_container_width=True):
+            if col_c2.button("+ Novo Cliente", use_container_width=True, disabled=not caixa_aberto):
                 dialog_novo_cliente()
                 
             st.markdown("---")
 
             # Passo 2: O que está lançando (Permite vender Serviço ou Produto individual)
-            tipo_venda = st.radio("O que está vendendo?", ["Serviço", "Produto"], horizontal=True)
+            tipo_venda = st.radio("O que está vendendo?", ["Serviço", "Produto"], horizontal=True, disabled=not caixa_aberto)
             
             if tipo_venda == "Serviço":
                 st.markdown(f"<label style='font-size:14px; font-weight:500; color:var(--text-main);'>{gold_icon('service')} Selecionar Serviço Principal</label>", unsafe_allow_html=True)
                 servico_opcoes = [s.nome for s in servicos]
-                item_selecionado = st.selectbox("Serviço Principal", servico_opcoes if servico_opcoes else ["Nenhum serviço cadastrado"], label_visibility="collapsed")
+                item_selecionado = st.selectbox("Serviço Principal", servico_opcoes if servico_opcoes else ["Nenhum serviço cadastrado"], label_visibility="collapsed", disabled=not caixa_aberto)
                 
                 valor_sugerido = 0.0
                 if item_selecionado and item_selecionado != "Nenhum serviço cadastrado":
@@ -273,7 +311,7 @@ def render_fast_launch():
             else:
                 st.markdown(f"<label style='font-size:14px; font-weight:500; color:var(--text-main);'>{gold_icon('box')} Selecionar Produto</label>", unsafe_allow_html=True)
                 produto_opcoes = [p.nome for p in produtos]
-                item_selecionado = st.selectbox("Produto Principal", produto_opcoes if produto_opcoes else ["Nenhum produto cadastrado"], label_visibility="collapsed")
+                item_selecionado = st.selectbox("Produto Principal", produto_opcoes if produto_opcoes else ["Nenhum produto cadastrado"], label_visibility="collapsed", disabled=not caixa_aberto)
                 
                 valor_sugerido = 0.0
                 if item_selecionado and item_selecionado != "Nenhum produto cadastrado":
@@ -281,7 +319,7 @@ def render_fast_launch():
                     valor_sugerido = prod.preco_venda if prod else 0.0
             
             col_preco, col_space = st.columns([1.5, 2], vertical_alignment="bottom")
-            valor_final = col_preco.number_input("Valor (R$)", value=valor_sugerido, min_value=0.0)
+            valor_final = col_preco.number_input("Valor (R$)", value=valor_sugerido, min_value=0.0, disabled=not caixa_aberto)
             
             st.markdown("---")
             
@@ -326,22 +364,22 @@ def render_fast_launch():
             
             with col_p1:
                 is_sel = st.session_state['selected_payment'] == 'Débito'
-                if st.button("Débito", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_deb"):
+                if st.button("Débito", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_deb", disabled=not caixa_aberto):
                     st.session_state['selected_payment'] = 'Débito'
                     st.rerun()
             with col_p2:
                 is_sel = st.session_state['selected_payment'] == 'Pix'
-                if st.button("Pix", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_pix"):
+                if st.button("Pix", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_pix", disabled=not caixa_aberto):
                     st.session_state['selected_payment'] = 'Pix'
                     st.rerun()
             with col_p3:
                 is_sel = st.session_state['selected_payment'] == 'Crédito'
-                if st.button("Crédito", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_cred"):
+                if st.button("Crédito", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_cred", disabled=not caixa_aberto):
                     st.session_state['selected_payment'] = 'Crédito'
                     st.rerun()
             with col_p4:
                 is_sel = st.session_state['selected_payment'] == 'Dinheiro'
-                if st.button("Dinheiro", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_din"):
+                if st.button("Dinheiro", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_din", disabled=not caixa_aberto):
                     st.session_state['selected_payment'] = 'Dinheiro'
                     st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
@@ -352,9 +390,9 @@ def render_fast_launch():
             if tipo_venda == "Produto":
                 col_b1, col_b2 = st.columns(2)
                 with col_b1:
-                    btn_patio = st.button("Enviar ao Pátio", type="secondary", use_container_width=True, key="btn_prod_patio")
+                    btn_patio = st.button("Enviar ao Pátio", type="secondary", use_container_width=True, key="btn_prod_patio", disabled=not caixa_aberto)
                 with col_b2:
-                    btn_direta = st.button("Finalizar Venda Direta", type="primary", use_container_width=True, key="btn_prod_direta")
+                    btn_direta = st.button("Finalizar Venda Direta", type="primary", use_container_width=True, key="btn_prod_direta", disabled=not caixa_aberto)
                     
                 if btn_patio or btn_direta:
                     if cliente_selecionado and not cliente_selecionado.startswith("-- Selecione"):
@@ -398,7 +436,7 @@ def render_fast_launch():
                     else:
                         st.error("Por favor, selecione um cliente cadastrado ou clique em + Novo Cliente para cadastrar um novo.")
             else:
-                if st.button("Iniciar Lavagem (Enviar ao Pátio)", type="primary", use_container_width=True, key="btn_serv_patio"):
+                if st.button("Iniciar Lavagem (Enviar ao Pátio)", type="primary", use_container_width=True, key="btn_serv_patio", disabled=not caixa_aberto):
                     if cliente_selecionado and not cliente_selecionado.startswith("-- Selecione"):
                         cli_codigo = cliente_selecionado.split(" |")[0]
                         cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
@@ -621,18 +659,48 @@ def render_fast_launch():
     with tab3:
         st.markdown(f"<h3 style='margin:12px 0;'>{gold_icon('calendar')} Histórico de Atendimentos</h3>", unsafe_allow_html=True)
         
-        # Filtros
+        # Filtros (adicionando filtro por Serviço/Produto)
         with st.container(border=True):
-            col_f1, col_f2 = st.columns(2)
+            col_f1, col_f2, col_f3 = st.columns(3)
             filtro_cliente = col_f1.selectbox("Filtrar por Cliente", ["Todos"] + [c.nome for c in clientes if c.codigo != "CLI-0000"])
-            filtro_status = col_f2.selectbox("Status", ["Finalizado", "Cancelado"])
+            
+            # Lista de serviços e produtos cadastrados para filtrar
+            opcoes_itens = ["Todos os Itens"]
+            opcoes_itens += [f"🛠️ {s.nome}" for s in servicos]
+            opcoes_itens += [f"📦 {p.nome}" for p in produtos]
+            filtro_item = col_f2.selectbox("Filtrar por Serviço/Produto", opcoes_itens)
+            
+            filtro_status = col_f3.selectbox("Status", ["Finalizado", "Cancelado"])
         
         # Ordenação de cima para baixo pelo último serviço concluído (data_conclusao desc)
         query_finalizados = db.query(Atendimento).filter(Atendimento.status == filtro_status).order_by(Atendimento.data_conclusao.desc(), Atendimento.id.desc())
+        
         if filtro_cliente != "Todos":
             c_ref = db.query(Cliente).filter(Cliente.nome == filtro_cliente).first()
             if c_ref:
                 query_finalizados = query_finalizados.filter(Atendimento.cliente_id == c_ref.id)
+                
+        # Filtro adicional de Item (Serviço ou Produto)
+        if filtro_item != "Todos os Itens":
+            tipo_filtro = "Serviço" if filtro_item.startswith("🛠️") else "Produto"
+            nome_filtro = filtro_item[3:] # Remove o emoji e o espaço
+            
+            if tipo_filtro == "Serviço":
+                item_ref = db.query(Servico).filter(Servico.nome == nome_filtro).first()
+            else:
+                item_ref = db.query(Produto).filter(Produto.nome == nome_filtro).first()
+                
+            if item_ref:
+                # Buscar IDs de atendimentos que contêm este item
+                at_ids_com_item = db.query(ItemAtendimento.atendimento_id).filter(
+                    ItemAtendimento.tipo == tipo_filtro,
+                    ItemAtendimento.referencia_id == item_ref.id
+                ).all()
+                ids_lista = [r[0] for r in at_ids_com_item]
+                query_finalizados = query_finalizados.filter(Atendimento.id.in_(ids_lista))
+            else:
+                # Se o item não for encontrado, força retorno vazio
+                query_finalizados = query_finalizados.filter(Atendimento.id == -1)
             
         atendimentos_finalizados = query_finalizados.all()
         
@@ -641,6 +709,7 @@ def render_fast_launch():
             
         for at in atendimentos_finalizados:
             cliente_at = db.query(Cliente).filter(Cliente.id == at.cliente_id).first()
+            itens_at = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == at.id).all()
             
             # Calcular entrada, saída e duração (usando naive UTC-3 datetimes)
             try:
@@ -667,6 +736,17 @@ def render_fast_launch():
             cliente_nome = cliente_at.nome if cliente_at else 'Desconhecido'
             cliente_veiculo = f"{cliente_at.modelo_veiculo} - {cliente_at.placa_veiculo}" if (cliente_at and cliente_at.modelo_veiculo) else (cliente_at.placa_veiculo if cliente_at else '')
             
+            # Buscar detalhes dos itens concluídos para exibição
+            detalhes = []
+            for i in itens_at:
+                if i.tipo == "Serviço":
+                    s = db.query(Servico).filter(Servico.id == i.referencia_id).first()
+                    detalhes.append(f"{gold_icon('service')} {s.nome if s else 'Serviço'}")
+                else:
+                    p = db.query(Produto).filter(Produto.id == i.referencia_id).first()
+                    detalhes.append(f"{gold_icon('box')} {p.nome if p else 'Produto'}")
+            detalhes_str = f"<div style='font-size: 12px; color: #86868B; margin-top: 3px;'><b>Itens:</b> {' | '.join(detalhes)}</div>" if detalhes else ""
+            
             # Layout super compacto em HTML para o histórico
             obs_html = f"<div style='font-size: 11px; color: #86868B; font-style: italic; background-color: #F5F5F7; padding: 4px 8px; border-radius: 4px; margin-top: 4px;'>Obs: {at.observacoes}</div>" if at.observacoes else ""
             status_dot = f"<span style='color: var(--success); font-weight: bold;'>● Concluído</span>" if at.status == "Finalizado" else f"<span style='color: var(--danger); font-weight: bold;'>● Cancelado</span>"
@@ -686,6 +766,7 @@ def render_fast_launch():
                 <div style="font-size: 12px; color: #86868B; line-height: 1.4;">
                     <b>Veículo:</b> {cliente_veiculo} | <b>Total:</b> R$ {at.valor_total:.2f} | <b>Pgto:</b> {at.forma_pagamento} {tempo_html}
                 </div>
+                {detalhes_str}
                 {obs_html}
             </div>
             """, unsafe_allow_html=True)
