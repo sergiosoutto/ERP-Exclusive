@@ -56,9 +56,9 @@ def dialog_editar_atendimento(at_id):
             p = db.query(Produto).filter(Produto.id == i.referencia_id).first()
             nome_ref = p.nome if p else "Desconhecido"
             
-        col1, col2 = st.columns([4, 1])
+        col1, col2 = st.columns([3, 1], vertical_alignment="center")
         col1.write(f"- {i.tipo}: {nome_ref} (R$ {i.valor_cobrado:.2f})")
-        if col2.button("Remover", key=f"rem_{i.id}"):
+        if col2.button("Remover", key=f"rem_{i.id}", use_container_width=True):
             db.delete(i)
             # Recalcula total
             at.valor_total -= i.valor_cobrado
@@ -93,9 +93,11 @@ def dialog_editar_atendimento(at_id):
         st.rerun()
 
 def render_fast_launch():
-    col_t, col_s = st.columns([3, 1])
-    col_t.title("⚡ Fast Launch (PDV)")
-    col_s.markdown("<div style='background-color: var(--success); color: white; padding: 10px; border-radius: 5px; text-align: center; margin-top: 15px; font-weight: bold;'>🟢 CAIXA ABERTO</div>", unsafe_allow_html=True)
+    col_t, col_s = st.columns([2, 1], vertical_alignment="center")
+    with col_t:
+        st.markdown("<h2 style='margin:0; padding:0; font-size: 24px;'>⚡ Fast Launch (PDV)</h2>", unsafe_allow_html=True)
+    with col_s:
+        st.markdown("<div style='background-color: var(--success); color: white; padding: 6px 10px; border-radius: 20px; text-align: center; font-weight: bold; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>🟢 CAIXA ABERTO</div>", unsafe_allow_html=True)
     
     # Inicializando estados
     if 'pdv_cart' not in st.session_state:
@@ -121,7 +123,7 @@ def render_fast_launch():
         
         # Seleção de Cliente
         cliente_opcoes = ["-- Selecione um Cliente --"] + [c.nome for c in clientes]
-        col_c1, col_c2 = st.columns([3, 1])
+        col_c1, col_c2 = st.columns([2.5, 1], vertical_alignment="end")
         cliente_selecionado = col_c1.selectbox("Cliente", cliente_opcoes)
         
         # Botão para abrir o popup de novo cliente
@@ -131,7 +133,7 @@ def render_fast_launch():
         st.markdown("---")
         
         # Adicionar Item
-        col_tipo, col_item, col_valor = st.columns([1, 2, 1])
+        col_tipo, col_item, col_valor = st.columns([1, 2, 1], vertical_alignment="end")
         tipo_item = col_tipo.selectbox("Tipo", ["Serviço", "Produto"])
         
         item_opcoes = []
@@ -155,7 +157,7 @@ def render_fast_launch():
         mais_itens = st.checkbox("Há mais itens neste atendimento?", value=True)
         
         # Botão Adicionar ao Carrinho
-        if st.button("Adicionar Item", type="secondary"):
+        if st.button("Adicionar Item", type="secondary", use_container_width=True):
             if item_selecionado and "Nenhum" not in item_selecionado:
                 st.session_state['pdv_cart'].append({
                     "tipo": tipo_item,
@@ -258,7 +260,7 @@ def render_fast_launch():
             itens_at = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == at.id).all()
             
             st.markdown(f"<div class='premium-card'>", unsafe_allow_html=True)
-            col1, col2 = st.columns([3, 2])
+            col1, col2 = st.columns([1, 1], vertical_alignment="center")
             with col1:
                 st.markdown(f"#### 🚘 [{at.codigo}] {cliente_at.nome if cliente_at else 'Desconhecido'} - {cliente_at.placa_veiculo if cliente_at else ''}")
                 st.markdown(f"**Total:** R$ {at.valor_total:.2f} | **Pagamento:** {at.forma_pagamento}")
@@ -275,16 +277,16 @@ def render_fast_launch():
                 
             with col2:
                 col_btn1, col_btn2, col_btn3 = st.columns(3)
-                if col_btn1.button("✅ Concluir", key=f"concluir_{at.id}"):
+                if col_btn1.button("✅ Concluir", key=f"concluir_{at.id}", use_container_width=True):
                     at.status = "Finalizado"
                     db.commit()
                     st.success("Atendimento finalizado!")
                     st.rerun()
                     
-                if col_btn2.button("✏️ Editar", key=f"editar_{at.id}"):
+                if col_btn2.button("✏️ Editar", key=f"editar_{at.id}", use_container_width=True):
                     dialog_editar_atendimento(at.id)
                     
-                if col_btn3.button("❌ Excluir", key=f"excluir_{at.id}"):
+                if col_btn3.button("❌ Excluir", key=f"excluir_{at.id}", use_container_width=True):
                     dialog_cancelar_atendimento(at.id)
                     
             st.markdown("</div>", unsafe_allow_html=True)

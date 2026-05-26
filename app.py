@@ -8,8 +8,8 @@ from db_config import init_db
 st.set_page_config(
     page_title="ERP Premium | Estética Automotiva",
     page_icon="🚘",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="centered",
+    initial_sidebar_state="auto"
 )
 
 # Inicializa o banco de dados (SQLite local para dev)
@@ -34,11 +34,20 @@ def inject_custom_css():
             --accent: #5E5CE6;
         }
 
-        /* Fundo limpo e fontes sem serifa (Inter/Apple System) */
-        .stApp, html, body, [class*="css"] {
+        /* Estilo da área de conteúdo (Centralizado e Compacto para Tablet) */
+        .block-container {
+            max-width: 760px !important;
+            padding-top: 1.5rem !important;
+            padding-bottom: 2rem !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+            margin: 0 auto !important;
+        }
+
+        /* Fontes e Fundo do App */
+        .stApp {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
             background-color: var(--bg-color) !important;
-            color: var(--text-main) !important;
         }
 
         /* Esconder Menu Hamburguer e Footer */
@@ -50,32 +59,37 @@ def inject_custom_css():
         .premium-card {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.04);
-            margin-bottom: 20px;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            margin-bottom: 16px;
             transition: box-shadow 0.3s ease;
         }
         .premium-card:hover {
-            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.06);
         }
 
-        /* Títulos */
-        h1, h2, h3 {
+        /* Ajustes de Títulos e Textos */
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--text-main) !important;
+            font-weight: 600 !important;
+        }
+        p, span, label {
             color: var(--text-main);
-            font-weight: 600;
-        }
-        p {
-            color: var(--text-sec);
         }
 
-        /* Ajustes Mobile (Stacked Cards vs Table) */
-        @media (max-width: 768px) {
-            .premium-table { display: none !important; }
-            .mobile-stacked { display: block !important; }
+        /* Ajuste do botão para formato reduzido e elegante */
+        .stButton>button {
+            border-radius: 8px !important;
+            font-weight: 500 !important;
         }
-        @media (min-width: 769px) {
-            .mobile-stacked { display: none !important; }
+
+        /* Força fundo branco nos modais/dialogs do Streamlit para evitar restos de dark mode */
+        div[role="dialog"] {
+            background-color: #FFFFFF !important;
+            color: #1D1D1F !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 12px !important;
         }
     </style>
     """, unsafe_allow_html=True)
