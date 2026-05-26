@@ -42,7 +42,10 @@ def gold_icon(icon_name):
         "trash": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>',
         "check": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>',
         "alert": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
-        "settings": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2 2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.5 1z"></path></svg>'
+        "settings": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2 2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.5 1z"></path></svg>',
+        "chart": '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>',
+        "fire": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>',
+        "snowflake": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><line x1="2" y1="12" x2="22" y2="12"></line><line x1="12" y1="2" x2="12" y2="22"></line><path d="m20 16-4-4 4-4"></path><path d="m4 8 4 4-4 4"></path><path d="m16 4-4 4-4-4"></path><path d="m8 20 4-4 4 4"></path></svg>'
     }
     return icons.get(icon_name, "")
 
@@ -674,8 +677,8 @@ def render_fast_launch():
             
             # Lista de serviços e produtos cadastrados para filtrar
             opcoes_itens = ["Todos os Itens"]
-            opcoes_itens += [f"🛠️ {s.nome}" for s in servicos]
-            opcoes_itens += [f"📦 {p.nome}" for p in produtos]
+            opcoes_itens += [f"[Serviço] {s.nome}" for s in servicos]
+            opcoes_itens += [f"[Produto] {p.nome}" for p in produtos]
             filtro_item = col_f2.selectbox("Filtrar por Serviço/Produto", opcoes_itens)
             
             filtro_status = col_f3.selectbox("Status", ["Finalizado", "Cancelado"])
@@ -690,8 +693,8 @@ def render_fast_launch():
                 
         # Filtro adicional de Item (Serviço ou Produto)
         if filtro_item != "Todos os Itens":
-            tipo_filtro = "Serviço" if filtro_item.startswith("🛠️") else "Produto"
-            nome_filtro = filtro_item[3:] # Remove o emoji e o espaço
+            tipo_filtro = "Serviço" if filtro_item.startswith("[Serviço]") else "Produto"
+            nome_filtro = filtro_item[10:] # Remove o prefixo '[Serviço] ' ou '[Produto] '
             
             if tipo_filtro == "Serviço":
                 item_ref = db.query(Servico).filter(Servico.nome == nome_filtro).first()
@@ -783,7 +786,7 @@ def render_fast_launch():
     # ABA 4: Resumo do Dia
     # ==========================================
     with tab4:
-        st.markdown(f"<h3 style='margin:12px 0;'>📊 Resumo Operacional</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='margin:12px 0;'>{gold_icon('chart')} Resumo Operacional</h3>", unsafe_allow_html=True)
         
         # Filtro de data para garantir que se trata do dia específico
         filtro_data_resumo = st.date_input("Data do Resumo", value=obter_hora_local().date(), key="dia_resumo_filter")
@@ -901,13 +904,13 @@ def render_fast_launch():
         st.markdown("---")
         
         # Lista com serviços e produtos executados
-        st.markdown(f"#### {gold_icon('service')} Serviços e Produtos Executados")
+        st.markdown(f"<h4 style='margin:12px 0;'>{gold_icon('service')} Serviços e Produtos Executados</h4>", unsafe_allow_html=True)
         if itens_executados:
             for (tipo, nome_item), dados in itens_executados.items():
-                emoji_tipo = "🛠️" if tipo == "Serviço" else "📦"
+                icon_tipo = gold_icon('service') if tipo == "Serviço" else gold_icon('box')
                 st.markdown(f"""
                 <div style="background-color:#FFFFFF; border:1px solid #E5E5EA; border-radius:6px; padding:6px 12px; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:13px; color:#1D1D1F;">{emoji_tipo} <b>{nome_item}</b> <span style='color:#86868B;'>(x{dados['qtd']})</span></span>
+                    <span style="font-size:13px; color:#1D1D1F;">{icon_tipo} <b>{nome_item}</b> <span style='color:#86868B;'>(x{dados['qtd']})</span></span>
                     <span style="font-size:13px; font-weight:bold; color:#1D1D1F;">R$ {dados['valor']:.2f}</span>
                 </div>
                 """, unsafe_allow_html=True)
@@ -917,7 +920,7 @@ def render_fast_launch():
         st.markdown("---")
         
         # Gráfico do dia mostrando volume de serviços por hora
-        st.markdown(f"#### {gold_icon('clock')} Volume de Atendimento por Hora")
+        st.markdown(f"<h4 style='margin:12px 0;'>{gold_icon('clock')} Volume de Atendimento por Hora</h4>", unsafe_allow_html=True)
         
         # Preparar dataframe para gráfico
         import pandas as pd
@@ -959,7 +962,7 @@ def render_fast_launch():
         with col_q:
             st.markdown(f"""
             <div style="background-color:#FFF2E6; border-left:4px solid #FF9500; padding:10px; border-radius:4px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                <span style="font-weight:bold; font-size:12px; color:#FF9500;">🔥 HORAS QUENTES (PICO)</span><br>
+                <span style="font-weight:bold; font-size:12px; color:#FF9500;">{gold_icon('fire')} HORAS QUENTES (PICO)</span><br>
                 <span style="font-size:13px; font-weight:bold; color:#1D1D1F;">{quentes_str}</span>
             </div>
             """, unsafe_allow_html=True)
@@ -967,7 +970,7 @@ def render_fast_launch():
         with col_f:
             st.markdown(f"""
             <div style="background-color:#EBF5FF; border-left:4px solid #007AFF; padding:10px; border-radius:4px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                <span style="font-weight:bold; font-size:12px; color:#007AFF;">❄️ HORAS FRIAS (OCIOSIDADE)</span><br>
+                <span style="font-weight:bold; font-size:12px; color:#007AFF;">{gold_icon('snowflake')} HORAS FRIAS (OCIOSIDADE)</span><br>
                 <span style="font-size:13px; font-weight:bold; color:#1D1D1F;">{frias_str}</span>
             </div>
             """, unsafe_allow_html=True)
