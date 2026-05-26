@@ -337,33 +337,79 @@ def render_fast_launch():
             
             st.markdown("""
             <style>
+                /* Configuração base dos botões de pagamento */
                 .payment-method-container div[data-testid="column"] button {
-                    height: 60px !important;
+                    height: 90px !important;
                     display: flex !important;
                     flex-direction: column !important;
                     align-items: center !important;
-                    justify-content: center !important;
-                    border-radius: 10px !important;
+                    justify-content: flex-end !important;
+                    padding-bottom: 12px !important;
+                    border-radius: 12px !important;
                     border: 1.5px solid #86868B !important;
                     background-color: #FFFFFF !important;
                     color: #1D1D1F !important;
-                    font-size: 14px !important;
-                    font-weight: 600 !important;
                     transition: all 0.2s ease-in-out !important;
+                    background-repeat: no-repeat !important;
+                    background-position: center top 16px !important;
+                    background-size: 28px 28px !important;
                 }
+                
+                /* Efeito hover geral */
                 .payment-method-container div[data-testid="column"] button:hover {
                     border-color: #007AFF !important;
                     background-color: #F5F5F7 !important;
                 }
+                
+                /* Estilos para o estado selecionado (primary) */
                 .payment-method-container div[data-testid="column"] button[kind="primary"] {
                     background-color: #007AFF !important;
                     border-color: #007AFF !important;
-                    color: #FFFFFF !important;
                     box-shadow: 0 4px 12px rgba(0, 122, 255, 0.2) !important;
+                }
+                
+                /* Forçar a cor branca para os elementos de texto internos do Streamlit */
+                .payment-method-container div[data-testid="column"] button p,
+                .payment-method-container div[data-testid="column"] button span {
+                    margin: 0 !important;
+                    line-height: 1.2 !important;
+                    font-size: 11px !important;
+                    font-weight: bold !important;
+                    color: #1D1D1F !important;
+                    text-align: center !important;
+                    white-space: normal !important;
                 }
                 .payment-method-container div[data-testid="column"] button[kind="primary"] p,
                 .payment-method-container div[data-testid="column"] button[kind="primary"] span {
                     color: #FFFFFF !important;
+                }
+
+                /* Ícones específicos por botão (Normal / Secondary) */
+                .st-key-pay_deb button {
+                    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='5' width='20' height='14' rx='2' ry='2'></rect><line x1='2' y1='10' x2='22' y2='10'></line><path d='M6 14h.01M10 14h.01'></path></svg>") !important;
+                }
+                .st-key-pay_pix button {
+                    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3L4 11h5l3-3 3 3h5zM12 21l-8-8h5l3 3 3-3h5z'></path></svg>") !important;
+                }
+                .st-key-pay_cred button {
+                    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='5' width='20' height='14' rx='2' ry='2'></rect><line x1='2' y1='10' x2='22' y2='10'></line><circle cx='6' cy='15' r='1.5'></circle><circle cx='18' cy='15' r='1.5'></circle></svg>") !important;
+                }
+                .st-key-pay_din button {
+                    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%23C5A059' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='6' width='20' height='12' rx='2'></rect><circle cx='12' cy='12' r='2.5'></circle><line x1='6' y1='12' x2='6.01' y2='12'></line><line x1='18' y1='12' x2='18.01' y2='12'></line></svg>") !important;
+                }
+
+                /* Ícones específicos para botões SELECIONADOS (Brancos para contraste com azul) */
+                .st-key-pay_deb button[kind="primary"] {
+                    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='5' width='20' height='14' rx='2' ry='2'></rect><line x1='2' y1='10' x2='22' y2='10'></line><path d='M6 14h.01M10 14h.01'></path></svg>") !important;
+                }
+                .st-key-pay_pix button[kind="primary"] {
+                    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3L4 11h5l3-3 3 3h5zM12 21l-8-8h5l3 3 3-3h5z'></path></svg>") !important;
+                }
+                .st-key-pay_cred button[kind="primary"] {
+                    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='5' width='20' height='14' rx='2' ry='2'></rect><line x1='2' y1='10' x2='22' y2='10'></line><circle cx='6' cy='15' r='1.5'></circle><circle cx='18' cy='15' r='1.5'></circle></svg>") !important;
+                }
+                .st-key-pay_din button[kind="primary"] {
+                    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='6' width='20' height='12' rx='2'></rect><circle cx='12' cy='12' r='2.5'></circle><line x1='6' y1='12' x2='6.01' y2='12'></line><line x1='18' y1='12' x2='18.01' y2='12'></line></svg>") !important;
                 }
             </style>
             """, unsafe_allow_html=True)
@@ -373,17 +419,17 @@ def render_fast_launch():
             
             with col_p1:
                 is_sel = st.session_state['selected_payment'] == 'Débito'
-                if st.button("Débito", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_deb", disabled=not caixa_aberto):
+                if st.button("Cartão de Débito", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_deb", disabled=not caixa_aberto):
                     st.session_state['selected_payment'] = 'Débito'
                     st.rerun()
             with col_p2:
                 is_sel = st.session_state['selected_payment'] == 'Pix'
-                if st.button("Pix", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_pix", disabled=not caixa_aberto):
+                if st.button("PIX", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_pix", disabled=not caixa_aberto):
                     st.session_state['selected_payment'] = 'Pix'
                     st.rerun()
             with col_p3:
                 is_sel = st.session_state['selected_payment'] == 'Crédito'
-                if st.button("Crédito", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_cred", disabled=not caixa_aberto):
+                if st.button("Cartão de Crédito", type="primary" if is_sel else "secondary", use_container_width=True, key="pay_cred", disabled=not caixa_aberto):
                     st.session_state['selected_payment'] = 'Crédito'
                     st.rerun()
             with col_p4:
