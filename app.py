@@ -94,6 +94,18 @@ def inject_custom_css():
             color: #FFFFFF !important;
         }
 
+        /* Melhorar contraste das caixas de preenchimento (inputs e selectbox) */
+        div[data-baseweb="input"] {
+            border: 1.5px solid #86868B !important;
+            border-radius: 8px !important;
+            background-color: #FFFFFF !important;
+        }
+        div[data-baseweb="select"] {
+            border: 1.5px solid #86868B !important;
+            border-radius: 8px !important;
+            background-color: #FFFFFF !important;
+        }
+
         /* Força fundo branco nos modais/dialogs do Streamlit para evitar restos de dark mode */
         div[role="dialog"] {
             background-color: #FFFFFF !important;

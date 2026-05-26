@@ -5,6 +5,24 @@ from datetime import datetime
 # Tratamento para st.dialog independente da versão exata 1.34/1.35+
 dialog_decorator = st.dialog if hasattr(st, "dialog") else st.experimental_dialog
 
+def formatar_telefone(tel_str):
+    # Remover todos os caracteres que não sejam dígitos
+    digitos = "".join([c for c in tel_str if c.isdigit()])
+    
+    # Se o número tiver 11 dígitos (ex: 61995717073)
+    if len(digitos) == 11:
+        return f"({digitos[:2]}) {digitos[2:7]}-{digitos[7:]}"
+    # Se tiver 10 dígitos (sem o 9 inicial, ex: 6133221100)
+    elif len(digitos) == 10:
+        return f"({digitos[:2]}) {digitos[2:6]}-{digitos[6:]}"
+    # Se tiver 9 dígitos (apenas o número com 9, ex: 995717073), assume DDD 61
+    elif len(digitos) == 9:
+        return f"(61) {digitos[:5]}-{digitos[5:]}"
+    # Se tiver 8 dígitos (sem o 9, ex: 33221100), assume DDD 61
+    elif len(digitos) == 8:
+        return f"(61) {digitos[:4]}-{digitos[4:]}"
+    return tel_str
+
 @dialog_decorator("👤 Cadastrar Novo Cliente")
 def dialog_novo_cliente():
     db = next(get_db())
@@ -14,15 +32,16 @@ def dialog_novo_cliente():
     
     st.info(f"Código do Cliente: **{codigo_seq}**")
     novo_nome = st.text_input("Nome do Cliente")
-    novo_tel = st.text_input("Telefone")
+    novo_tel = st.text_input("Telefone", value="(61) ")
     nova_placa = st.text_input("Placa do Veículo")
-    novo_modelo = st.text_input("Modelo do Veículo") # Novo campo solicitado!
+    novo_modelo = st.text_input("Modelo do Veículo")
     if st.button("Salvar Cliente", type="primary", use_container_width=True):
         if novo_nome:
+            tel_formatado = formatar_telefone(novo_tel)
             novo_cliente = Cliente(
                 codigo=codigo_seq, 
                 nome=novo_nome, 
-                telefone=novo_tel, 
+                telefone=tel_formatado, 
                 placa_veiculo=nova_placa,
                 modelo_veiculo=novo_modelo
             )
