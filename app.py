@@ -62,13 +62,13 @@ def inject_custom_css():
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 12px;
-            padding: 18px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-            margin-bottom: 16px;
+            padding: 10px 14px !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+            margin-bottom: 8px !important;
             transition: box-shadow 0.3s ease;
         }
         .premium-card:hover {
-            box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
         }
 
         /* Ajustes de Títulos e Textos */
@@ -80,10 +80,13 @@ def inject_custom_css():
             color: var(--text-main);
         }
 
-        /* Ajuste do botão para formato reduzido e elegante */
+        /* Ajuste do botão para formato reduzido, compacto e alinhado */
         .stButton>button {
             border-radius: 8px !important;
             font-weight: 500 !important;
+            font-size: 13px !important;
+            padding: 4px 12px !important;
+            white-space: nowrap !important;
         }
 
         /* Forçar texto branco para botões primários (primary) para garantir excelente contraste */
@@ -133,7 +136,7 @@ def main():
         
         # Menu de Navegação (Ícones explicativos)
         menu_options = [
-            "Fast Launch (PDV)", 
+            "Fluxo do dia", 
             "Transações", 
             "Gestão Financeira", 
             "Estoque Fracionado",
@@ -167,7 +170,7 @@ def main():
     # ==========================================
     # 5. Roteamento de Módulos (Views)
     # ==========================================
-    if selected == "Fast Launch (PDV)":
+    if selected == "Fluxo do dia":
         from modules.fast_launch import render_fast_launch
         render_fast_launch()
 

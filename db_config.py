@@ -36,6 +36,7 @@ class Cliente(Base):
     nome = Column(String, index=True)
     telefone = Column(String)
     placa_veiculo = Column(String)
+    modelo_veiculo = Column(String) # Ex: Corolla, Onix
 
 class Servico(Base):
     __tablename__ = "servicos"
@@ -120,6 +121,18 @@ def init_db():
             print("Erro ao migrar forma_pagamento de atendimentos:", e)
             db.rollback()
 
+    # 4. Migração para a coluna 'modelo_veiculo' em 'clientes'
+    try:
+        db.execute(text("SELECT modelo_veiculo FROM clientes LIMIT 1"))
+    except Exception:
+        try:
+            db.rollback()
+            db.execute(text("ALTER TABLE clientes ADD COLUMN modelo_veiculo VARCHAR"))
+            db.commit()
+        except Exception as e:
+            print("Erro ao migrar modelo_veiculo de clientes:", e)
+            db.rollback()
+
     db.close()
     seed_db()
 
@@ -154,12 +167,28 @@ def seed_db():
 
         # Criar Clientes Fictícios
         clientes = [
-            Cliente(codigo="CLI-0001", nome="João Silva", telefone="(11) 99999-1111", placa_veiculo="ABC-1234"),
-            Cliente(codigo="CLI-0002", nome="Maria Oliveira", telefone="(11) 98888-2222", placa_veiculo="XYZ-9876")
+            Cliente(codigo="CLI-0001", nome="João Silva", telefone="(11) 99999-1111", placa_veiculo="ABC-1234", modelo_veiculo="Fiat Uno"),
+            Cliente(codigo="CLI-0002", nome="Maria Oliveira", telefone="(11) 98888-2222", placa_veiculo="XYZ-9876", modelo_veiculo="Chevrolet Onix"),
+            Cliente(codigo="CLI-0003", nome="Carlos Souza", telefone="(11) 97777-3333", placa_veiculo="FGH-5678", modelo_veiculo="Honda Civic")
         ]
         db.add_all(clientes)
-
         db.commit()
+
+        # Criar 11 atendimentos finalizados para Carlos Souza (CLI-0003) para testar "Diamante"
+        carlos = db.query(Cliente).filter(Cliente.codigo == "CLI-0003").first()
+        if carlos:
+            for i in range(11):
+                at = Atendimento(
+                    codigo=f"OS-D{i+1:02d}",
+                    cliente_id=carlos.id,
+                    status="Finalizado",
+                    desconto_total=0.0,
+                    valor_total=80.0,
+                    forma_pagamento="Pix",
+                    data_criacao=datetime.now().isoformat()
+                )
+                db.add(at)
+            db.commit()
     db.close()
 
 def get_db():

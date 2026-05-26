@@ -12,13 +12,20 @@ def dialog_novo_cliente():
     qtd = db.query(Cliente).count()
     codigo_seq = f"CLI-{qtd+1:04d}"
     
-    st.info(f"Código do Cliente a ser criado: **{codigo_seq}**")
+    st.info(f"Código do Cliente: **{codigo_seq}**")
     novo_nome = st.text_input("Nome do Cliente")
     novo_tel = st.text_input("Telefone")
     nova_placa = st.text_input("Placa do Veículo")
+    novo_modelo = st.text_input("Modelo do Veículo") # Novo campo solicitado!
     if st.button("Salvar Cliente", type="primary", use_container_width=True):
         if novo_nome:
-            novo_cliente = Cliente(codigo=codigo_seq, nome=novo_nome, telefone=novo_tel, placa_veiculo=nova_placa)
+            novo_cliente = Cliente(
+                codigo=codigo_seq, 
+                nome=novo_nome, 
+                telefone=novo_tel, 
+                placa_veiculo=nova_placa,
+                modelo_veiculo=novo_modelo
+            )
             db.add(novo_cliente)
             db.commit()
             st.success(f"Cliente {codigo_seq} cadastrado com sucesso!")
@@ -100,7 +107,7 @@ def dialog_editar_atendimento(at_id):
 def render_fast_launch():
     col_t, col_s = st.columns([2, 1], vertical_alignment="center")
     with col_t:
-        st.markdown("<h2 style='margin:0; padding:0; font-size: 24px;'>⚡ Fast Launch (PDV)</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='margin:0; padding:0; font-size: 24px;'>⚡ Fluxo do dia</h2>", unsafe_allow_html=True)
     with col_s:
         st.markdown("<div style='background-color: var(--success); color: white; padding: 6px 10px; border-radius: 20px; text-align: center; font-weight: bold; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>🟢 CAIXA ABERTO</div>", unsafe_allow_html=True)
     
@@ -110,13 +117,6 @@ def render_fast_launch():
     
     # Obter sessão do DB
     db = next(get_db())
-
-    # Garante que o Cliente Avulso (CLI-0000) exista no DB
-    cliente_avulso = db.query(Cliente).filter(Cliente.codigo == "CLI-0000").first()
-    if not cliente_avulso:
-        cliente_avulso = Cliente(codigo="CLI-0000", nome="Cliente Avulso", telefone="-", placa_veiculo="")
-        db.add(cliente_avulso)
-        db.commit()
 
     # Carregar dados
     clientes = db.query(Cliente).all()
@@ -133,35 +133,38 @@ def render_fast_launch():
         with st.container(border=True):
             st.markdown("### 🚀 Lançamento Rápido")
             
-            # Passo 1: Selecionar Cliente
-            # Ordenar clientes para que CLI-0000 (Avulso) seja o primeiro
-            clientes_ordenados = sorted(clientes, key=lambda c: 0 if c.codigo == "CLI-0000" else 1)
-            cliente_opcoes = [
-                f"{c.codigo or 'CLI-0000'} | {c.nome} - {c.placa_veiculo or 'Sem Placa'}"
-                for c in clientes_ordenados
-            ]
+            # Passo 1: Selecionar Cliente (sem permitir avulso/CLI-0000 se houver, filtramos CLI-0000 da lista)
+            # Contar atendimentos finalizados para cada cliente (programa de fidelidade Diamante > 10 serviços)
+            cliente_atendimentos = {}
+            for c in clientes:
+                count = db.query(Atendimento).filter(
+                    Atendimento.cliente_id == c.id, 
+                    Atendimento.status == "Finalizado"
+                ).count()
+                cliente_atendimentos[c.id] = count
+                
+            cliente_opcoes = ["-- Selecione o Cliente (Digite nome, placa ou modelo) --"]
+            for c in clientes:
+                if c.codigo == "CLI-0000":
+                    continue # Não permite cliente avulso
+                    
+                tag_fidelidade = ""
+                if cliente_atendimentos.get(c.id, 0) > 10:
+                    tag_fidelidade = " 💎 [Diamante]"
+                    
+                cliente_opcoes.append(
+                    f"{c.codigo} | {c.nome}{tag_fidelidade} - {c.modelo_veiculo or 'Sem Modelo'} ({c.placa_veiculo or 'Sem Placa'})"
+                )
             
             col_c1, col_c2 = st.columns([2.5, 1], vertical_alignment="bottom")
-            cliente_selecionado = col_c1.selectbox("👤 Selecionar Cliente (Digite para buscar)", cliente_opcoes, index=0)
+            cliente_selecionado = col_c1.selectbox("👤 Selecionar Cliente", cliente_opcoes, index=0)
             
             # Botão para abrir o popup de novo cliente
             if col_c2.button("➕ Novo Cliente", use_container_width=True):
                 dialog_novo_cliente()
                 
-            # Extrair placa do cliente selecionado para preencher a placa automaticamente
-            placa_sugerida = ""
-            if cliente_selecionado:
-                cli_codigo = cliente_selecionado.split(" |")[0]
-                cliente_ref = next((c for c in clientes if c.codigo == cli_codigo), None)
-                if cliente_ref and cliente_ref.placa_veiculo:
-                    placa_sugerida = cliente_ref.placa_veiculo
-            
-            # Placa / Veículo rápida (super útil para o ambiente de lavagem!)
-            placa_veiculo = st.text_input("🚘 Placa / Modelo do Veículo (Opcional)", value=placa_sugerida)
-            
-            st.markdown("---")
-            
             # Passo 2: Selecionar Serviço e Preço
+            st.markdown("---")
             col_serv, col_preco = st.columns([2.5, 1], vertical_alignment="bottom")
             
             servico_opcoes = [s.nome for s in servicos]
@@ -181,16 +184,11 @@ def render_fast_launch():
             
             # Botão de Lançamento Direto (Um clique!)
             if st.button("🚀 INICIAR LAVAGEM (Enviar ao Pátio)", type="primary", use_container_width=True):
-                if cliente_selecionado:
+                if cliente_selecionado and not cliente_selecionado.startswith("-- Selecione"):
                     # Extrair código do cliente
                     cli_codigo = cliente_selecionado.split(" |")[0]
                     cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
                     cliente_id = cliente_ref.id if cliente_ref else None
-                    
-                    # Se digitou uma placa diferente e o cliente é "Cliente Avulso", salvamos a placa na OS
-                    if cliente_ref and cliente_ref.codigo == "CLI-0000" and placa_veiculo:
-                        cliente_ref.placa_veiculo = placa_veiculo
-                        db.commit()
                     
                     # Gerar codigo sequencial OS
                     qtd = db.query(Atendimento).count()
@@ -222,6 +220,8 @@ def render_fast_launch():
                     db.commit()
                     st.success(f"Lavagem {codigo_seq} iniciada com sucesso! Movida para o Pátio.")
                     st.rerun()
+                else:
+                    st.error("Por favor, selecione um cliente cadastrado ou clique em ➕ Novo Cliente para cadastrar um novo.")
                     
         # Passo 4: Opções Avançadas (Carrinho, Descontos, Produtos)
         with st.expander("⚙️ Mais Opções (Vendas complexas, Vários itens, Produtos ou Descontos)"):
@@ -298,7 +298,7 @@ def render_fast_launch():
                     
                     # Salvar Ordem Avançada
                     if st.button("SALVAR ATENDIMENTO (Carrinho)", type="primary", disabled=not gerente_aprovado, use_container_width=True, key="cart_save_btn"):
-                        if cliente_selecionado:
+                        if cliente_selecionado and not cliente_selecionado.startswith("-- Selecione"):
                             # Extrair código do cliente
                             cli_codigo = cliente_selecionado.split(" |")[0]
                             cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
@@ -359,10 +359,16 @@ def render_fast_launch():
             itens_at = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == at.id).all()
             
             with st.container(border=True):
-                col1, col2 = st.columns([1.2, 1], vertical_alignment="center")
+                # Proporções otimizadas para tablet: col1 (informações) e col2 (botões sem quebra de linha)
+                col1, col2 = st.columns([1.1, 1.4], vertical_alignment="center")
                 with col1:
-                    st.markdown(f"#### 🚘 [{at.codigo}] {cliente_at.nome if cliente_at else 'Desconhecido'}")
-                    st.markdown(f"**Total:** R$ {at.valor_total:.2f} | **Pagamento:** {at.forma_pagamento}")
+                    # Menor altura das linhas usando margens compactas e texto otimizado
+                    cliente_nome = cliente_at.nome if cliente_at else 'Desconhecido'
+                    cliente_veiculo = f"{cliente_at.modelo_veiculo} - {cliente_at.placa_veiculo}" if (cliente_at and cliente_at.modelo_veiculo) else (cliente_at.placa_veiculo if cliente_at else '')
+                    
+                    st.markdown(f"<div style='margin-bottom: 2px; font-size: 15px; font-weight: bold; color: var(--text-main);'>🚘 [{at.codigo}] {cliente_nome}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='margin-bottom: 2px; font-size: 12px; color: var(--text-sec);'><b>Veículo:</b> {cliente_veiculo}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='margin-bottom: 2px; font-size: 12px; color: var(--text-sec);'><b>Total:</b> R$ {at.valor_total:.2f} | <b>Pgto:</b> {at.forma_pagamento}</div>", unsafe_allow_html=True)
                     
                     detalhes = []
                     for i in itens_at:
@@ -372,20 +378,21 @@ def render_fast_launch():
                         else:
                             p = db.query(Produto).filter(Produto.id == i.referencia_id).first()
                             detalhes.append(f"📦 {p.nome if p else 'Produto'}")
-                    st.markdown(" | ".join(detalhes))
+                    st.markdown(f"<div style='font-size: 12px; color: var(--text-sec);'>{' | '.join(detalhes)}</div>", unsafe_allow_html=True)
                     
                 with col2:
                     col_btn1, col_btn2, col_btn3 = st.columns(3)
-                    if col_btn1.button("✅ Concluir", key=f"concluir_{at.id}", use_container_width=True):
+                    # Botões sem emojis e em formato compacto para alinhar e nunca quebrar linha no tablet
+                    if col_btn1.button("Concluir", key=f"concluir_{at.id}", use_container_width=True):
                         at.status = "Finalizado"
                         db.commit()
                         st.success("Atendimento finalizado!")
                         st.rerun()
                         
-                    if col_btn2.button("✏️ Editar", key=f"editar_{at.id}", use_container_width=True):
+                    if col_btn2.button("Editar", key=f"editar_{at.id}", use_container_width=True):
                         dialog_editar_atendimento(at.id)
                         
-                    if col_btn3.button("❌ Excluir", key=f"excluir_{at.id}", use_container_width=True):
+                    if col_btn3.button("Excluir", key=f"excluir_{at.id}", use_container_width=True):
                         dialog_cancelar_atendimento(at.id)
 
     # ==========================================
@@ -397,13 +404,14 @@ def render_fast_launch():
         # Filtros
         with st.container(border=True):
             col_f1, col_f2 = st.columns(2)
-            filtro_cliente = col_f1.selectbox("Filtrar por Cliente", ["Todos"] + [c.nome for c in clientes])
+            filtro_cliente = col_f1.selectbox("Filtrar por Cliente", ["Todos"] + [c.nome for c in clientes if c.codigo != "CLI-0000"])
             filtro_status = col_f2.selectbox("Status", ["Finalizado", "Cancelado"])
         
         query_finalizados = db.query(Atendimento).filter(Atendimento.status == filtro_status)
         if filtro_cliente != "Todos":
-            c_id = db.query(Cliente).filter(Cliente.nome == filtro_cliente).first().id
-            query_finalizados = query_finalizados.filter(Atendimento.cliente_id == c_id)
+            c_ref = db.query(Cliente).filter(Cliente.nome == filtro_cliente).first()
+            if c_ref:
+                query_finalizados = query_finalizados.filter(Atendimento.cliente_id == c_ref.id)
             
         atendimentos_finalizados = query_finalizados.all()
         
