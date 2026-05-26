@@ -57,8 +57,10 @@ def dialog_novo_cliente():
     st.info(f"Código do Cliente: **{codigo_seq}**")
     novo_nome = st.text_input("Nome do Cliente")
     
-    # Campo de telefone pré-preenchido com o DDD 61 (evitando o parâmetro prefix que crasha no Streamlit Cloud antigo)
-    novo_tel_num = st.text_input("Telefone", value="(61) ", placeholder="99571-7073")
+    # Campo de telefone dividido para travar o DDD 61 e permitir tabulação direta (TAB pula o campo desabilitado)
+    col_ddd, col_tel = st.columns([1, 3], vertical_alignment="bottom")
+    col_ddd.text_input("DDD", value="61", disabled=True)
+    novo_tel_num = col_tel.text_input("Telefone", placeholder="99571-7073")
     
     nova_placa = st.text_input("Placa do Veículo")
     novo_modelo = st.text_input("Modelo do Veículo")
@@ -218,18 +220,24 @@ def render_fast_launch():
                 border-radius: 20px !important;
                 font-weight: bold !important;
                 font-size: 11px !important;
-                padding: 4px 10px !important;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
-                border: none !important;
-                color: white !important;
                 height: 32px !important;
                 white-space: nowrap !important;
+                transition: none !important;
             }}
-            .caixa-aberto-btn button {{
+            .caixa-aberto-btn button, .caixa-aberto-btn button:hover, .caixa-aberto-btn button:active, .caixa-aberto-btn button:focus {{
                 background-color: #34C759 !important;
+                color: #FFFFFF !important;
+                border: 1px solid #34C759 !important;
             }}
-            .caixa-fechado-btn button {{
+            .caixa-fechado-btn button, .caixa-fechado-btn button:hover, .caixa-fechado-btn button:active, .caixa-fechado-btn button:focus {{
                 background-color: #FF3B30 !important;
+                color: #FFFFFF !important;
+                border: 1px solid #FF3B30 !important;
+            }}
+            /* Forçar a cor branca para os elementos de texto internos do Streamlit */
+            .caixa-aberto-btn button *, .caixa-fechado-btn button * {{
+                color: #FFFFFF !important;
             }}
         </style>
         """, unsafe_allow_html=True)
