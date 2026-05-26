@@ -257,8 +257,8 @@ def render_fast_launch():
     servicos = db.query(Servico).all()
     produtos = db.query(Produto).all()
     
-    # Estrutura de Abas (Lançamento -> Novo Atendimento, Finalizado -> Concluído)
-    tab1, tab2, tab3 = st.tabs(["Novo Atendimento", "Em andamento", "Concluído"])
+    # Estrutura de Abas (Lançamento -> Novo Atendimento, Finalizado -> Concluído, Resumo)
+    tab1, tab2, tab3, tab4 = st.tabs(["Novo Atendimento", "Em andamento", "Concluído", "Resumo"])
     
     # ==========================================
     # ABA 1: Novo Atendimento
@@ -778,3 +778,197 @@ def render_fast_launch():
                 {obs_html}
             </div>
             """, unsafe_allow_html=True)
+
+    # ==========================================
+    # ABA 4: Resumo do Dia
+    # ==========================================
+    with tab4:
+        st.markdown(f"<h3 style='margin:12px 0;'>📊 Resumo Operacional</h3>", unsafe_allow_html=True)
+        
+        # Filtro de data para garantir que se trata do dia específico
+        filtro_data_resumo = st.date_input("Data do Resumo", value=obter_hora_local().date(), key="dia_resumo_filter")
+        data_busca = filtro_data_resumo.isoformat()
+        
+        # Consultar atendimentos concluídos na data selecionada
+        atendimentos_dia = db.query(Atendimento).filter(
+            Atendimento.status == "Finalizado",
+            Atendimento.data_conclusao.like(f"{data_busca}%")
+        ).all()
+        
+        # Estatísticas do dia
+        qtd_atendimentos = len(atendimentos_dia)
+        qtd_servicos = 0
+        qtd_produtos = 0
+        valor_servicos = 0.0
+        valor_produtos = 0.0
+        tempos_servicos = []
+        
+        # Agrupamento de itens executados
+        itens_executados = {} # { (tipo, nome): { "qtd": 0, "valor": 0.0 } }
+        
+        # Contagem por hora para o gráfico (24h)
+        volume_por_hora = [0] * 24
+        
+        for at in atendimentos_dia:
+            # Registrar hora de conclusão para o gráfico
+            if at.data_conclusao:
+                try:
+                    dt_con = datetime.fromisoformat(at.data_conclusao)
+                    volume_por_hora[dt_con.hour] += 1
+                except Exception:
+                    pass
+            
+            # Calcular duração (Naive datetimes)
+            if at.data_criacao and at.data_conclusao:
+                try:
+                    ent = datetime.fromisoformat(at.data_criacao).replace(tzinfo=None)
+                    con = datetime.fromisoformat(at.data_conclusao).replace(tzinfo=None)
+                    duracao_min = (con - ent).total_seconds() / 60.0
+                    tempos_servicos.append(duracao_min)
+                except Exception:
+                    pass
+            
+            # Carregar itens
+            itens = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == at.id).all()
+            for i in itens:
+                if i.tipo == "Serviço":
+                    qtd_servicos += 1
+                    valor_servicos += i.valor_cobrado
+                    s = db.query(Servico).filter(Servico.id == i.referencia_id).first()
+                    nome_item = s.nome if s else "Serviço Desconhecido"
+                else:
+                    qtd_produtos += 1
+                    valor_produtos += i.valor_cobrado
+                    p = db.query(Produto).filter(Produto.id == i.referencia_id).first()
+                    nome_item = p.nome if p else "Produto Desconhecido"
+                
+                key = (i.tipo, nome_item)
+                if key not in itens_executados:
+                    itens_executados[key] = {"qtd": 0, "valor": 0.0}
+                itens_executados[key]["qtd"] += 1
+                itens_executados[key]["valor"] += i.valor_cobrado
+
+        # Calcular tempo médio dos serviços
+        if tempos_servicos:
+            media_min = sum(tempos_servicos) / len(tempos_servicos)
+            if media_min >= 60:
+                h, m = divmod(media_min, 60)
+                tempo_medio_str = f"{int(h)}h {int(m)}m"
+            else:
+                tempo_medio_str = f"{int(media_min)} min"
+        else:
+            tempo_medio_str = "Sem registros"
+            
+        valor_total = valor_servicos + valor_produtos
+        
+        # Renderizar cartões de resumo
+        col_c1, col_c2, col_c3 = st.columns(3)
+        with col_c1:
+            st.markdown(f"""
+            <div style="background-color:#FFFFFF; padding:12px; border-radius:10px; border:1px solid #E5E5EA; text-align:center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <div style="font-size:12px; color:#86868B; font-weight:bold;">SERVIÇOS</div>
+                <div style="font-size:20px; font-weight:bold; color:#1D1D1F; margin:4px 0;">R$ {valor_servicos:.2f}</div>
+                <div style="font-size:11px; color:#34C759; font-weight:bold;">{qtd_servicos} executados</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col_c2:
+            st.markdown(f"""
+            <div style="background-color:#FFFFFF; padding:12px; border-radius:10px; border:1px solid #E5E5EA; text-align:center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <div style="font-size:12px; color:#86868B; font-weight:bold;">PRODUTOS</div>
+                <div style="font-size:20px; font-weight:bold; color:#1D1D1F; margin:4px 0;">R$ {valor_produtos:.2f}</div>
+                <div style="font-size:11px; color:#34C759; font-weight:bold;">{qtd_produtos} vendidos</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col_c3:
+            st.markdown(f"""
+            <div style="background-color:#FFFFFF; padding:12px; border-radius:10px; border:1px solid #E5E5EA; text-align:center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <div style="font-size:12px; color:#86868B; font-weight:bold;">TEMPO MÉDIO</div>
+                <div style="font-size:20px; font-weight:bold; color:#1D1D1F; margin:4px 0;">{tempo_medio_str}</div>
+                <div style="font-size:11px; color:#86868B;">{qtd_atendimentos} concluídos</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        # Totalizador de Faturamento
+        st.markdown(f"""
+        <div style="background-color:#F5F5F7; padding:10px 16px; border-radius:8px; border:1px solid #E5E5EA; margin-top:12px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:bold; font-size:14px; color:#1D1D1F;">VALOR TOTAL FATURADO:</span>
+            <span style="font-weight:bold; font-size:18px; color:#007AFF;">R$ {valor_total:.2f}</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # Lista com serviços e produtos executados
+        st.markdown(f"#### {gold_icon('service')} Serviços e Produtos Executados")
+        if itens_executados:
+            for (tipo, nome_item), dados in itens_executados.items():
+                emoji_tipo = "🛠️" if tipo == "Serviço" else "📦"
+                st.markdown(f"""
+                <div style="background-color:#FFFFFF; border:1px solid #E5E5EA; border-radius:6px; padding:6px 12px; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:13px; color:#1D1D1F;">{emoji_tipo} <b>{nome_item}</b> <span style='color:#86868B;'>(x{dados['qtd']})</span></span>
+                    <span style="font-size:13px; font-weight:bold; color:#1D1D1F;">R$ {dados['valor']:.2f}</span>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("Nenhum serviço ou produto executado/vendido nesta data.")
+            
+        st.markdown("---")
+        
+        # Gráfico do dia mostrando volume de serviços por hora
+        st.markdown(f"#### {gold_icon('clock')} Volume de Atendimento por Hora")
+        
+        # Preparar dataframe para gráfico
+        import pandas as pd
+        df_horas = pd.DataFrame({
+            "Horário": [f"{h:02d}:00" for h in range(24)],
+            "Volume": volume_por_hora
+        })
+        # Mostrar o intervalo de horário de pico padrão (07h às 20h)
+        df_comercial = df_horas.iloc[7:21]
+        
+        st.bar_chart(df_comercial, x="Horário", y="Volume", use_container_width=True)
+        
+        # Identificação de Horas Quentes e Frias
+        horas_ativas = [(h, vol) for h, vol in enumerate(volume_por_hora) if vol > 0]
+        
+        if horas_ativas:
+            max_vol = max(vol for h, vol in horas_ativas)
+            quentes_lista = [f"{h:02d}:00" for h, vol in horas_ativas if vol == max_vol]
+            quentes_str = ", ".join(quentes_lista)
+            
+            # Horas frias: intervalo comercial padrão (08h às 18h) com menor volume
+            frias_lista = []
+            for h in range(8, 19):
+                vol = volume_por_hora[h]
+                if vol < max_vol:
+                    frias_lista.append((h, vol))
+            
+            if frias_lista:
+                min_vol_comercial = min(vol for h, vol in frias_lista)
+                frias_filtradas = [f"{h:02d}:00" for h, vol in frias_lista if vol == min_vol_comercial]
+                frias_str = ", ".join(frias_filtradas)
+            else:
+                frias_str = "Nenhuma"
+        else:
+            quentes_str = "Sem atividades faturadas"
+            frias_str = "Sem atividades faturadas"
+            
+        col_q, col_f = st.columns(2)
+        with col_q:
+            st.markdown(f"""
+            <div style="background-color:#FFF2E6; border-left:4px solid #FF9500; padding:10px; border-radius:4px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                <span style="font-weight:bold; font-size:12px; color:#FF9500;">🔥 HORAS QUENTES (PICO)</span><br>
+                <span style="font-size:13px; font-weight:bold; color:#1D1D1F;">{quentes_str}</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col_f:
+            st.markdown(f"""
+            <div style="background-color:#EBF5FF; border-left:4px solid #007AFF; padding:10px; border-radius:4px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
+                <span style="font-weight:bold; font-size:12px; color:#007AFF;">❄️ HORAS FRIAS (OCIOSIDADE)</span><br>
+                <span style="font-size:13px; font-weight:bold; color:#1D1D1F;">{frias_str}</span>
+            </div>
+            """, unsafe_allow_html=True)
+
