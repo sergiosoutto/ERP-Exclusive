@@ -86,6 +86,11 @@ def inject_custom_css():
             font-weight: 500 !important;
         }
 
+        /* Forçar texto branco para botões primários (primary) para garantir excelente contraste */
+        button[kind="primary"], button[kind="primary"] p, button[kind="primary"] span {
+            color: #FFFFFF !important;
+        }
+
         /* Força fundo branco nos modais/dialogs do Streamlit para evitar restos de dark mode */
         div[role="dialog"] {
             background-color: #FFFFFF !important;

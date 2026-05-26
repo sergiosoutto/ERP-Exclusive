@@ -32,6 +32,7 @@ class Produto(Base):
 class Cliente(Base):
     __tablename__ = "clientes"
     id = Column(Integer, primary_key=True, index=True)
+    codigo = Column(String, unique=True, index=True) # Ex: CLI-0001
     nome = Column(String, index=True)
     telefone = Column(String)
     placa_veiculo = Column(String)
@@ -100,8 +101,8 @@ def seed_db():
 
         # Criar Clientes Fictícios
         clientes = [
-            Cliente(nome="João Silva", telefone="(11) 99999-1111", placa_veiculo="ABC-1234"),
-            Cliente(nome="Maria Oliveira", telefone="(11) 98888-2222", placa_veiculo="XYZ-9876")
+            Cliente(codigo="CLI-0001", nome="João Silva", telefone="(11) 99999-1111", placa_veiculo="ABC-1234"),
+            Cliente(codigo="CLI-0002", nome="Maria Oliveira", telefone="(11) 98888-2222", placa_veiculo="XYZ-9876")
         ]
         db.add_all(clientes)
 

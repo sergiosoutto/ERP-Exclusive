@@ -8,15 +8,20 @@ dialog_decorator = st.dialog if hasattr(st, "dialog") else st.experimental_dialo
 @dialog_decorator("👤 Cadastrar Novo Cliente")
 def dialog_novo_cliente():
     db = next(get_db())
+    # Gerar código automático e sequencial
+    qtd = db.query(Cliente).count()
+    codigo_seq = f"CLI-{qtd+1:04d}"
+    
+    st.info(f"Código do Cliente a ser criado: **{codigo_seq}**")
     novo_nome = st.text_input("Nome do Cliente")
     novo_tel = st.text_input("Telefone")
     nova_placa = st.text_input("Placa do Veículo")
-    if st.button("Salvar Cliente", type="primary"):
+    if st.button("Salvar Cliente", type="primary", use_container_width=True):
         if novo_nome:
-            novo_cliente = Cliente(nome=novo_nome, telefone=novo_tel, placa_veiculo=nova_placa)
+            novo_cliente = Cliente(codigo=codigo_seq, nome=novo_nome, telefone=novo_tel, placa_veiculo=nova_placa)
             db.add(novo_cliente)
             db.commit()
-            st.success("Cliente cadastrado com sucesso!")
+            st.success(f"Cliente {codigo_seq} cadastrado com sucesso!")
             st.rerun()
 
 @dialog_decorator("⚠️ Cancelar Atendimento")
@@ -121,10 +126,29 @@ def render_fast_launch():
         st.markdown("<div class='premium-card'>", unsafe_allow_html=True)
         st.markdown("### Novo Atendimento")
         
-        # Seleção de Cliente
-        cliente_opcoes = ["-- Selecione um Cliente --"] + [c.nome for c in clientes]
+        # Campo de busca para filtrar a lista se houver muitos registros
+        busca_cliente = st.text_input("🔍 Pesquisar Cliente (nome, código ou placa)", key="busca_cliente_input")
+        
+        # Filtra a lista de clientes conforme a busca
+        if busca_cliente:
+            termo = busca_cliente.lower()
+            clientes_filtrados = [
+                c for c in clientes 
+                if termo in c.nome.lower() 
+                or (c.codigo and termo in c.codigo.lower())
+                or (c.placa_veiculo and termo in c.placa_veiculo.lower())
+            ]
+        else:
+            clientes_filtrados = clientes
+
+        # Opções formatadas do selectbox
+        cliente_opcoes = ["-- Selecione um Cliente --"] + [
+            f"{c.codigo or 'CLI-0000'} | {c.nome} - {c.placa_veiculo or 'Sem Placa'}" 
+            for c in clientes_filtrados
+        ]
+        
         col_c1, col_c2 = st.columns([2.5, 1], vertical_alignment="bottom")
-        cliente_selecionado = col_c1.selectbox("Cliente", cliente_opcoes)
+        cliente_selecionado = col_c1.selectbox("Selecione o Cliente", cliente_opcoes)
         
         # Botão para abrir o popup de novo cliente
         if col_c2.button("➕ Novo Cliente", use_container_width=True):
@@ -200,7 +224,10 @@ def render_fast_launch():
             # Salvar Ordem
             if st.button("SALVAR ATENDIMENTO", type="primary", disabled=not gerente_aprovado, use_container_width=True):
                 if cliente_selecionado != "-- Selecione um Cliente --":
-                    cliente_id = db.query(Cliente).filter(Cliente.nome == cliente_selecionado).first().id
+                    # Extrair o código do cliente (tudo antes de " |")
+                    cli_codigo = cliente_selecionado.split(" |")[0]
+                    cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
+                    cliente_id = cliente_ref.id if cliente_ref else None
                     
                     # Gerar codigo sequencial
                     qtd = db.query(Atendimento).count()
