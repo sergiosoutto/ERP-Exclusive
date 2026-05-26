@@ -358,6 +358,21 @@ def render_fast_launch():
             cliente_at = db.query(Cliente).filter(Cliente.id == at.cliente_id).first()
             itens_at = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == at.id).all()
             
+            # Calcular horário de entrada e tempo decorrido
+            try:
+                entrada_dt = datetime.fromisoformat(at.data_criacao)
+                decorrido = datetime.now() - entrada_dt
+                horas, resto = divmod(decorrido.total_seconds(), 3600)
+                minutos, _ = divmod(resto, 60)
+                if horas > 0:
+                    tempo_decorrido = f"há {int(horas)}h {int(minutos)}m"
+                else:
+                    tempo_decorrido = f"há {int(minutos)}m"
+                hora_entrada = entrada_dt.strftime("%H:%M")
+            except Exception:
+                hora_entrada = "--:--"
+                tempo_decorrido = "tempo desconhecido"
+            
             with st.container(border=True):
                 # Proporções otimizadas para tablet: col1 (informações) e col2 (botões sem quebra de linha)
                 col1, col2 = st.columns([1.1, 1.4], vertical_alignment="center")
@@ -368,6 +383,7 @@ def render_fast_launch():
                     
                     st.markdown(f"<div style='margin-bottom: 2px; font-size: 15px; font-weight: bold; color: var(--text-main);'>🚘 [{at.codigo}] {cliente_nome}</div>", unsafe_allow_html=True)
                     st.markdown(f"<div style='margin-bottom: 2px; font-size: 12px; color: var(--text-sec);'><b>Veículo:</b> {cliente_veiculo}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='margin-bottom: 2px; font-size: 12px; color: var(--text-sec);'><b>Entrada:</b> {hora_entrada} <span style='color: var(--warning); font-weight: bold;'>({tempo_decorrido})</span></div>", unsafe_allow_html=True)
                     st.markdown(f"<div style='margin-bottom: 2px; font-size: 12px; color: var(--text-sec);'><b>Total:</b> R$ {at.valor_total:.2f} | <b>Pgto:</b> {at.forma_pagamento}</div>", unsafe_allow_html=True)
                     
                     detalhes = []
@@ -385,6 +401,7 @@ def render_fast_launch():
                     # Botões sem emojis e em formato compacto para alinhar e nunca quebrar linha no tablet
                     if col_btn1.button("Concluir", key=f"concluir_{at.id}", use_container_width=True):
                         at.status = "Finalizado"
+                        at.data_conclusao = datetime.now().isoformat()
                         db.commit()
                         st.success("Atendimento finalizado!")
                         st.rerun()
@@ -421,8 +438,33 @@ def render_fast_launch():
         for at in atendimentos_finalizados:
             cliente_at = db.query(Cliente).filter(Cliente.id == at.cliente_id).first()
             
+            # Calcular entrada, saída e duração para os concluídos
+            try:
+                entrada_dt = datetime.fromisoformat(at.data_criacao)
+                hora_entrada = entrada_dt.strftime("%d/%m %H:%M")
+                if at.data_conclusao:
+                    conclusao_dt = datetime.fromisoformat(at.data_conclusao)
+                    hora_saida = conclusao_dt.strftime("%H:%M")
+                    duracao = conclusao_dt - entrada_dt
+                    horas, resto = divmod(duracao.total_seconds(), 3600)
+                    minutos, _ = divmod(resto, 60)
+                    if horas > 0:
+                        duracao_str = f"{int(horas)}h {int(minutos)}m"
+                    else:
+                        duracao_str = f"{int(minutos)}m"
+                else:
+                    hora_saida = "--:--"
+                    duracao_str = "Desconhecido"
+            except Exception:
+                hora_entrada = "--:--"
+                hora_saida = "--:--"
+                duracao_str = "Desconhecido"
+            
             with st.container(border=True):
                 status_text = "🟢 Finalizado" if at.status == "Finalizado" else "🔴 Cancelado"
                 st.markdown(f"**{status_text}**")
                 st.markdown(f"#### {at.codigo} | {cliente_at.nome if cliente_at else 'Desconhecido'} - R$ {at.valor_total:.2f}")
-                st.markdown(f"**Data:** {at.data_criacao[:16].replace('T', ' ')} | **Pagamento:** {at.forma_pagamento}")
+                if at.status == "Finalizado":
+                    st.markdown(f"**Entrada:** {hora_entrada} | **Saída:** {hora_saida} *(Duração: {duracao_str})*")
+                else:
+                    st.markdown(f"**Data:** {hora_entrada} | **Pagamento:** {at.forma_pagamento}")
