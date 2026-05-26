@@ -68,6 +68,59 @@ def init_db():
     if not os.path.exists("data"):
         os.makedirs("data")
     Base.metadata.create_all(bind=engine)
+    
+    db = SessionLocal()
+    from sqlalchemy import text
+    
+    # 1. Migração para a coluna 'codigo' em 'clientes'
+    try:
+        db.execute(text("SELECT codigo FROM clientes LIMIT 1"))
+    except Exception:
+        try:
+            db.rollback()
+            db.execute(text("ALTER TABLE clientes ADD COLUMN codigo VARCHAR"))
+            db.commit()
+            
+            # Atualiza clientes existentes sem código
+            clientes_sem_codigo = db.query(Cliente).filter(Cliente.codigo == None).all()
+            for i, c in enumerate(clientes_sem_codigo):
+                c.codigo = f"CLI-{i+1:04d}"
+            db.commit()
+        except Exception as e:
+            print("Erro ao migrar clientes:", e)
+            db.rollback()
+
+    # 2. Migração para a coluna 'codigo' em 'atendimentos'
+    try:
+        db.execute(text("SELECT codigo FROM atendimentos LIMIT 1"))
+    except Exception:
+        try:
+            db.rollback()
+            db.execute(text("ALTER TABLE atendimentos ADD COLUMN codigo VARCHAR"))
+            db.commit()
+            
+            # Atualiza atendimentos existentes sem código
+            atendimentos_sem_codigo = db.query(Atendimento).filter(Atendimento.codigo == None).all()
+            for i, at in enumerate(atendimentos_sem_codigo):
+                at.codigo = f"OS-{i+1:04d}"
+            db.commit()
+        except Exception as e:
+            print("Erro ao migrar código de atendimentos:", e)
+            db.rollback()
+
+    # 3. Migração para a coluna 'forma_pagamento' em 'atendimentos'
+    try:
+        db.execute(text("SELECT forma_pagamento FROM atendimentos LIMIT 1"))
+    except Exception:
+        try:
+            db.rollback()
+            db.execute(text("ALTER TABLE atendimentos ADD COLUMN forma_pagamento VARCHAR"))
+            db.commit()
+        except Exception as e:
+            print("Erro ao migrar forma_pagamento de atendimentos:", e)
+            db.rollback()
+
+    db.close()
     seed_db()
 
 def seed_db():
