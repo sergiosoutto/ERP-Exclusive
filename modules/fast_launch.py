@@ -282,10 +282,28 @@ def render_fast_launch():
                 ).count()
                 cliente_atendimentos[c.id] = count
                 
-            cliente_opcoes = ["-- Selecione o Cliente (Digite nome, placa ou modelo) --"]
+            # Campo de Pesquisa Textual - Sempre abre o teclado nativo no celular
+            col_search, col_new = st.columns([2.5, 1], vertical_alignment="bottom")
+            with col_search:
+                busca_cliente = st.text_input("🔍 Pesquisar Cliente (Digite Nome, Placa ou Modelo e aperte Enter)", placeholder="Ex: Corolla, ABC-1234, João...", disabled=not caixa_aberto)
+            with col_new:
+                if st.button("+ Novo Cliente", use_container_width=True, disabled=not caixa_aberto):
+                    dialog_novo_cliente()
+            
+            # Filtrar a lista de opções com base na pesquisa
+            termo = busca_cliente.strip().lower()
+            cliente_opcoes = ["-- Selecione o Cliente --"]
             for c in clientes:
                 if c.codigo == "CLI-0000":
                     continue # Não permite cliente avulso
+                
+                nome = (c.nome or "").lower()
+                placa = (c.placa_veiculo or "").lower()
+                modelo = (c.modelo_veiculo or "").lower()
+                codigo = (c.codigo or "").lower()
+                
+                if termo and (termo not in nome and termo not in placa and termo not in modelo and termo not in codigo):
+                    continue
                     
                 tag_fidelidade = ""
                 if cliente_atendimentos.get(c.id, 0) > 10:
@@ -295,28 +313,8 @@ def render_fast_launch():
                     f"{c.codigo} | {c.nome}{tag_fidelidade} - {c.modelo_veiculo or 'Sem Modelo'} ({c.placa_veiculo or 'Sem Placa'})"
                 )
             
-            # Macete para burlar a limitação do Streamlit no celular (onde listas < 10 itens não abrem o teclado)
-            # Adicionamos dicas úteis e elegantes no fim da lista para garantir no mínimo 10 opções
-            dicas = [
-                "💡 Dica: digite a placa do veículo para filtrar",
-                "💡 Dica: digite o nome do cliente para buscar",
-                "💡 Dica: digite o modelo do carro para filtrar",
-                "💡 Dica: clique em + Novo Cliente para cadastrar",
-                "💡 Dica: clientes Diamante têm atendimento especial",
-                "💡 Dica: use o teclado virtual para pesquisa rápida"
-            ]
-            dicas_adicionadas = 0
-            while len(cliente_opcoes) < 10 and dicas_adicionadas < len(dicas):
-                cliente_opcoes.append(dicas[dicas_adicionadas])
-                dicas_adicionadas += 1
-            
             st.markdown(f"<label style='font-size:14px; font-weight:500; color:var(--text-main);'>{gold_icon('user')} Selecionar Cliente</label>", unsafe_allow_html=True)
-            col_c1, col_c2 = st.columns([2.5, 1], vertical_alignment="bottom")
-            cliente_selecionado = col_c1.selectbox("Selecione o Cliente", cliente_opcoes, index=0, label_visibility="collapsed", disabled=not caixa_aberto)
-            
-            # Botão para abrir o popup de novo cliente
-            if col_c2.button("+ Novo Cliente", use_container_width=True, disabled=not caixa_aberto):
-                dialog_novo_cliente()
+            cliente_selecionado = st.selectbox("Selecione o Cliente", cliente_opcoes, index=0, label_visibility="collapsed", disabled=not caixa_aberto)
                 
             st.markdown("---")
 
@@ -480,7 +478,7 @@ def render_fast_launch():
                     btn_direta = st.button("Finalizar Venda Direta", type="primary", use_container_width=True, key="btn_prod_direta", disabled=not caixa_aberto)
                     
                 if btn_patio or btn_direta:
-                    if cliente_selecionado and not cliente_selecionado.startswith("-- Selecione") and not cliente_selecionado.startswith("💡 Dica"):
+                    if cliente_selecionado and not cliente_selecionado.startswith("-- Selecione"):
                         cli_codigo = cliente_selecionado.split(" |")[0]
                         cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
                         cliente_id = cliente_ref.id if cliente_ref else None
@@ -522,7 +520,7 @@ def render_fast_launch():
                         st.error("Por favor, selecione um cliente cadastrado ou clique em + Novo Cliente para cadastrar um novo.")
             else:
                 if st.button("Iniciar Lavagem (Enviar ao Pátio)", type="primary", use_container_width=True, key="btn_serv_patio", disabled=not caixa_aberto):
-                    if cliente_selecionado and not cliente_selecionado.startswith("-- Selecione") and not cliente_selecionado.startswith("💡 Dica"):
+                    if cliente_selecionado and not cliente_selecionado.startswith("-- Selecione"):
                         cli_codigo = cliente_selecionado.split(" |")[0]
                         cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
                         cliente_id = cliente_ref.id if cliente_ref else None
@@ -634,7 +632,7 @@ def render_fast_launch():
                     
                     # Salvar Ordem Avançada
                     if st.button("SALVAR ATENDIMENTO (Carrinho)", type="primary", disabled=not gerente_aprovado, use_container_width=True, key="cart_save_btn"):
-                        if cliente_selecionado and not cliente_selecionado.startswith("-- Selecione") and not cliente_selecionado.startswith("💡 Dica"):
+                        if cliente_selecionado and not cliente_selecionado.startswith("-- Selecione"):
                             # Extrair código do cliente
                             cli_codigo = cliente_selecionado.split(" |")[0]
                             cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
