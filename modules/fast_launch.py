@@ -28,7 +28,7 @@ def dialog_novo_cliente():
 def dialog_cancelar_atendimento(at_id):
     st.warning("Para cancelar este serviço, é necessária a senha do gerente.")
     senha = st.text_input("Senha do Gerente", type="password", key=f"senha_canc_{at_id}")
-    if st.button("Confirmar Cancelamento", type="primary"):
+    if st.button("Confirmar Cancelamento", type="primary", use_container_width=True):
         if senha == "admin123":
             db = next(get_db())
             at = db.query(Atendimento).filter(Atendimento.id == at_id).first()
@@ -83,7 +83,7 @@ def dialog_editar_atendimento(at_id):
         
     valor_novo = st.number_input("Valor", min_value=0.0, key="edit_valor")
     
-    if st.button("Adicionar Item ao Atendimento Existente"):
+    if st.button("Adicionar Item ao Atendimento Existente", use_container_width=True):
         ref_id = 0
         if tipo_novo == "Serviço":
             ref_id = db.query(Servico).filter(Servico.nome == item_novo).first().id
@@ -111,6 +111,13 @@ def render_fast_launch():
     # Obter sessão do DB
     db = next(get_db())
 
+    # Garante que o Cliente Avulso (CLI-0000) exista no DB
+    cliente_avulso = db.query(Cliente).filter(Cliente.codigo == "CLI-0000").first()
+    if not cliente_avulso:
+        cliente_avulso = Cliente(codigo="CLI-0000", nome="Cliente Avulso", telefone="-", placa_veiculo="")
+        db.add(cliente_avulso)
+        db.commit()
+
     # Carregar dados
     clientes = db.query(Cliente).all()
     servicos = db.query(Servico).all()
@@ -123,113 +130,69 @@ def render_fast_launch():
     # ABA 1: Lançamento
     # ==========================================
     with tab1:
-        st.markdown("<div class='premium-card'>", unsafe_allow_html=True)
-        st.markdown("### Novo Atendimento")
-        
-        # Campo de busca para filtrar a lista se houver muitos registros
-        busca_cliente = st.text_input("🔍 Pesquisar Cliente (nome, código ou placa)", key="busca_cliente_input")
-        
-        # Filtra a lista de clientes conforme a busca
-        if busca_cliente:
-            termo = busca_cliente.lower()
-            clientes_filtrados = [
-                c for c in clientes 
-                if termo in c.nome.lower() 
-                or (c.codigo and termo in c.codigo.lower())
-                or (c.placa_veiculo and termo in c.placa_veiculo.lower())
+        with st.container(border=True):
+            st.markdown("### 🚀 Lançamento Rápido")
+            
+            # Passo 1: Selecionar Cliente
+            # Ordenar clientes para que CLI-0000 (Avulso) seja o primeiro
+            clientes_ordenados = sorted(clientes, key=lambda c: 0 if c.codigo == "CLI-0000" else 1)
+            cliente_opcoes = [
+                f"{c.codigo or 'CLI-0000'} | {c.nome} - {c.placa_veiculo or 'Sem Placa'}"
+                for c in clientes_ordenados
             ]
-        else:
-            clientes_filtrados = clientes
-
-        # Opções formatadas do selectbox
-        cliente_opcoes = ["-- Selecione um Cliente --"] + [
-            f"{c.codigo or 'CLI-0000'} | {c.nome} - {c.placa_veiculo or 'Sem Placa'}" 
-            for c in clientes_filtrados
-        ]
-        
-        col_c1, col_c2 = st.columns([2.5, 1], vertical_alignment="bottom")
-        cliente_selecionado = col_c1.selectbox("Selecione o Cliente", cliente_opcoes)
-        
-        # Botão para abrir o popup de novo cliente
-        if col_c2.button("➕ Novo Cliente", use_container_width=True):
-            dialog_novo_cliente()
-        
-        st.markdown("---")
-        
-        # Adicionar Item
-        col_tipo, col_item, col_valor = st.columns([1, 2, 1], vertical_alignment="bottom")
-        tipo_item = col_tipo.selectbox("Tipo", ["Serviço", "Produto"])
-        
-        item_opcoes = []
-        valor_sugerido = 0.0
-        
-        if tipo_item == "Serviço":
-            item_opcoes = [s.nome for s in servicos]
-            item_selecionado = col_item.selectbox("Serviço", item_opcoes if item_opcoes else ["Nenhum serviço"])
-            if item_selecionado and item_selecionado != "Nenhum serviço":
-                serv = db.query(Servico).filter(Servico.nome == item_selecionado).first()
-                valor_sugerido = serv.preco_padrao if serv else 0.0
-        else:
-            item_opcoes = [p.nome for p in produtos]
-            item_selecionado = col_item.selectbox("Produto", item_opcoes if item_opcoes else ["Nenhum produto"])
-            if item_selecionado and item_selecionado != "Nenhum produto":
-                prod = db.query(Produto).filter(Produto.nome == item_selecionado).first()
-                valor_sugerido = prod.preco_venda if prod else 0.0
+            
+            col_c1, col_c2 = st.columns([2.5, 1], vertical_alignment="bottom")
+            cliente_selecionado = col_c1.selectbox("👤 Selecionar Cliente (Digite para buscar)", cliente_opcoes, index=0)
+            
+            # Botão para abrir o popup de novo cliente
+            if col_c2.button("➕ Novo Cliente", use_container_width=True):
+                dialog_novo_cliente()
                 
-        valor_final = col_valor.number_input("Valor (R$)", value=valor_sugerido, min_value=0.0)
-        
-        mais_itens = st.checkbox("Há mais itens neste atendimento?", value=True)
-        
-        # Botão Adicionar ao Carrinho
-        if st.button("Adicionar Item", type="secondary", use_container_width=True):
-            if item_selecionado and "Nenhum" not in item_selecionado:
-                st.session_state['pdv_cart'].append({
-                    "tipo": tipo_item,
-                    "nome": item_selecionado,
-                    "valor": valor_final
-                })
-                st.success(f"{item_selecionado} adicionado!")
-                if not mais_itens:
-                    st.rerun()
-        
-        # Exibir Carrinho
-        if st.session_state['pdv_cart']:
-            st.markdown("#### Itens Adicionados:")
-            total = 0.0
-            for i, item in enumerate(st.session_state['pdv_cart']):
-                st.markdown(f"- **{item['tipo']}**: {item['nome']} - R$ {item['valor']:.2f}")
-                total += item['valor']
+            # Extrair placa do cliente selecionado para preencher a placa automaticamente
+            placa_sugerida = ""
+            if cliente_selecionado:
+                cli_codigo = cliente_selecionado.split(" |")[0]
+                cliente_ref = next((c for c in clientes if c.codigo == cli_codigo), None)
+                if cliente_ref and cliente_ref.placa_veiculo:
+                    placa_sugerida = cliente_ref.placa_veiculo
             
-            st.markdown(f"**Subtotal: R$ {total:.2f}**")
+            # Placa / Veículo rápida (super útil para o ambiente de lavagem!)
+            placa_veiculo = st.text_input("🚘 Placa / Modelo do Veículo (Opcional)", value=placa_sugerida)
             
-            col_f, col_d = st.columns(2)
-            forma_pagamento = col_f.selectbox("Forma de Pagamento", ["Débito", "Crédito", "Pix", "Dinheiro"])
-            desconto = col_d.number_input("Desconto (%)", min_value=0.0, max_value=100.0, value=0.0)
+            st.markdown("---")
             
-            desconto_valor = total * (desconto / 100)
-            total_com_desconto = total - desconto_valor
+            # Passo 2: Selecionar Serviço e Preço
+            col_serv, col_preco = st.columns([2.5, 1], vertical_alignment="bottom")
             
-            # Senha do Gerente se desconto > 5%
-            gerente_aprovado = True
-            if desconto > 5.0:
-                st.warning("⚠️ Desconto maior que 5% exige autorização do gerente.")
-                senha = st.text_input("Senha do Gerente", type="password")
-                if senha != "admin123": # Senha hardcoded para o MVP
-                    gerente_aprovado = False
-                    if senha:
-                        st.error("Senha incorreta!")
+            servico_opcoes = [s.nome for s in servicos]
+            servico_selecionado = col_serv.selectbox("🛠️ Selecionar Serviço Principal", servico_opcoes if servico_opcoes else ["Nenhum serviço cadastrado"])
             
-            st.markdown(f"<h3 style='color: var(--success);'>Total Final: R$ {total_com_desconto:.2f}</h3>", unsafe_allow_html=True)
+            valor_sugerido = 0.0
+            if servico_selecionado and servico_selecionado != "Nenhum serviço cadastrado":
+                serv = next((s for s in servicos if s.nome == servico_selecionado), None)
+                valor_sugerido = serv.preco_padrao if serv else 0.0
+                
+            valor_final = col_preco.number_input("Valor (R$)", value=valor_sugerido, min_value=0.0)
             
-            # Salvar Ordem
-            if st.button("SALVAR ATENDIMENTO", type="primary", disabled=not gerente_aprovado, use_container_width=True):
-                if cliente_selecionado != "-- Selecione um Cliente --":
-                    # Extrair o código do cliente (tudo antes de " |")
+            # Passo 3: Pagamento
+            forma_pagamento = st.selectbox("💳 Forma de Pagamento", ["Dinheiro", "Pix", "Débito", "Crédito"])
+            
+            st.markdown("---")
+            
+            # Botão de Lançamento Direto (Um clique!)
+            if st.button("🚀 INICIAR LAVAGEM (Enviar ao Pátio)", type="primary", use_container_width=True):
+                if cliente_selecionado:
+                    # Extrair código do cliente
                     cli_codigo = cliente_selecionado.split(" |")[0]
                     cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
                     cliente_id = cliente_ref.id if cliente_ref else None
                     
-                    # Gerar codigo sequencial
+                    # Se digitou uma placa diferente e o cliente é "Cliente Avulso", salvamos a placa na OS
+                    if cliente_ref and cliente_ref.codigo == "CLI-0000" and placa_veiculo:
+                        cliente_ref.placa_veiculo = placa_veiculo
+                        db.commit()
+                    
+                    # Gerar codigo sequencial OS
                     qtd = db.query(Atendimento).count()
                     codigo_seq = f"OS-{qtd+1:04d}"
                     
@@ -237,40 +200,149 @@ def render_fast_launch():
                         codigo=codigo_seq,
                         cliente_id=cliente_id,
                         status="Em andamento",
-                        desconto_total=desconto_valor,
-                        valor_total=total_com_desconto,
+                        desconto_total=0.0,
+                        valor_total=valor_final,
                         forma_pagamento=forma_pagamento,
                         data_criacao=datetime.now().isoformat()
                     )
                     db.add(novo_atendimento)
-                    db.flush() # Para pegar o ID
+                    db.flush()
                     
-                    for cart_item in st.session_state['pdv_cart']:
-                        ref_id = 0
-                        if cart_item['tipo'] == "Serviço":
-                            ref_id = db.query(Servico).filter(Servico.nome == cart_item['nome']).first().id
-                        else:
-                            ref_id = db.query(Produto).filter(Produto.nome == cart_item['nome']).first().id
-                            
+                    # Adicionar o item do serviço
+                    serv_ref = db.query(Servico).filter(Servico.nome == servico_selecionado).first()
+                    if serv_ref:
                         novo_item = ItemAtendimento(
                             atendimento_id=novo_atendimento.id,
-                            tipo=cart_item['tipo'],
-                            referencia_id=ref_id,
-                            valor_cobrado=cart_item['valor']
+                            tipo="Serviço",
+                            referencia_id=serv_ref.id,
+                            valor_cobrado=valor_final
                         )
                         db.add(novo_item)
-                        
+                    
                     db.commit()
-                    st.session_state['pdv_cart'] = [] # Limpa o carrinho
-                    st.success(f"Atendimento {codigo_seq} lançado com sucesso! Movido para a aba 'Em andamento'.")
-                else:
-                    st.error("Por favor, selecione um cliente válido.")
+                    st.success(f"Lavagem {codigo_seq} iniciada com sucesso! Movida para o Pátio.")
+                    st.rerun()
+                    
+        # Passo 4: Opções Avançadas (Carrinho, Descontos, Produtos)
+        with st.expander("⚙️ Mais Opções (Vendas complexas, Vários itens, Produtos ou Descontos)"):
+            st.markdown("Use esta área apenas para vendas complexas que exijam múltiplos itens ou descontos autorizados.")
             
-            if st.button("Limpar Carrinho"):
-                st.session_state['pdv_cart'] = []
-                st.rerun()
+            # Checkbox para ativar o modo avançado
+            modo_avancado = st.checkbox("Ativar Lançamento com Carrinho de Compras", value=False)
+            
+            if modo_avancado:
+                # Seleção de tipo, item, valor e botão Adicionar
+                col_tipo, col_item, col_valor = st.columns([1, 2, 1], vertical_alignment="bottom")
+                tipo_item = col_tipo.selectbox("Tipo Item", ["Serviço", "Produto"], key="cart_tipo")
                 
-        st.markdown("</div>", unsafe_allow_html=True)
+                item_opcoes = []
+                valor_sugerido_c = 0.0
+                
+                if tipo_item == "Serviço":
+                    item_opcoes = [s.nome for s in servicos]
+                    item_selecionado = col_item.selectbox("Serviço Item", item_opcoes if item_opcoes else ["Nenhum serviço"], key="cart_serv")
+                    if item_selecionado and item_selecionado != "Nenhum serviço":
+                        serv = next((s for s in servicos if s.nome == item_selecionado), None)
+                        valor_sugerido_c = serv.preco_padrao if serv else 0.0
+                else:
+                    item_opcoes = [p.nome for p in produtos]
+                    item_selecionado = col_item.selectbox("Produto Item", item_opcoes if item_opcoes else ["Nenhum produto"], key="cart_prod")
+                    if item_selecionado and item_selecionado != "Nenhum produto":
+                        prod = next((p for p in produtos if p.nome == item_selecionado), None)
+                        valor_sugerido_c = prod.preco_venda if prod else 0.0
+                        
+                valor_final_c = col_valor.number_input("Valor Item", value=valor_sugerido_c, min_value=0.0, key="cart_valor")
+                
+                col_btn_add, col_check = st.columns([1, 1], vertical_alignment="bottom")
+                mais_itens = col_check.checkbox("Há mais itens neste atendimento?", value=True, key="cart_mais_itens")
+                
+                if col_btn_add.button("Adicionar Item ao Carrinho", type="secondary", use_container_width=True, key="cart_add_btn"):
+                    if item_selecionado and "Nenhum" not in item_selecionado:
+                        st.session_state['pdv_cart'].append({
+                            "tipo": tipo_item,
+                            "nome": item_selecionado,
+                            "valor": valor_final_c
+                        })
+                        st.success(f"{item_selecionado} adicionado!")
+                        if not mais_itens:
+                            st.rerun()
+                
+                # Exibir Carrinho
+                if st.session_state['pdv_cart']:
+                    st.markdown("#### Itens no Carrinho:")
+                    total = 0.0
+                    for idx_i, item in enumerate(st.session_state['pdv_cart']):
+                        st.markdown(f"- **{item['tipo']}**: {item['nome']} - R$ {item['valor']:.2f}")
+                        total += item['valor']
+                    
+                    st.markdown(f"**Subtotal: R$ {total:.2f}**")
+                    
+                    col_f, col_d = st.columns(2)
+                    forma_pagamento_c = col_f.selectbox("Forma de Pagamento (Carrinho)", ["Dinheiro", "Pix", "Débito", "Crédito"], key="cart_pgto")
+                    desconto = col_d.number_input("Desconto (%)", min_value=0.0, max_value=100.0, value=0.0, key="cart_desconto")
+                    
+                    desconto_valor = total * (desconto / 100)
+                    total_com_desconto = total - desconto_valor
+                    
+                    # Senha do Gerente se desconto > 5%
+                    gerente_aprovado = True
+                    if desconto > 5.0:
+                        st.warning("⚠️ Desconto maior que 5% exige autorização do gerente.")
+                        senha = st.text_input("Senha do Gerente", type="password", key="cart_senha_gerente")
+                        if senha != "admin123":
+                            gerente_aprovado = False
+                            if senha:
+                                st.error("Senha incorreta!")
+                    
+                    st.markdown(f"<h3 style='color: var(--success);'>Total Final: R$ {total_com_desconto:.2f}</h3>", unsafe_allow_html=True)
+                    
+                    # Salvar Ordem Avançada
+                    if st.button("SALVAR ATENDIMENTO (Carrinho)", type="primary", disabled=not gerente_aprovado, use_container_width=True, key="cart_save_btn"):
+                        if cliente_selecionado:
+                            # Extrair código do cliente
+                            cli_codigo = cliente_selecionado.split(" |")[0]
+                            cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
+                            cliente_id = cliente_ref.id if cliente_ref else None
+                            
+                            # Gerar codigo sequencial OS
+                            qtd = db.query(Atendimento).count()
+                            codigo_seq = f"OS-{qtd+1:04d}"
+                            
+                            novo_atendimento = Atendimento(
+                                codigo=codigo_seq,
+                                cliente_id=cliente_id,
+                                status="Em andamento",
+                                desconto_total=desconto_valor,
+                                valor_total=total_com_desconto,
+                                forma_pagamento=forma_pagamento_c,
+                                data_criacao=datetime.now().isoformat()
+                            )
+                            db.add(novo_atendimento)
+                            db.flush()
+                            
+                            for cart_item in st.session_state['pdv_cart']:
+                                ref_id = 0
+                                if cart_item['tipo'] == "Serviço":
+                                    ref_id = db.query(Servico).filter(Servico.nome == cart_item['nome']).first().id
+                                else:
+                                    ref_id = db.query(Produto).filter(Produto.nome == cart_item['nome']).first().id
+                                    
+                                novo_item = ItemAtendimento(
+                                    atendimento_id=novo_atendimento.id,
+                                    tipo=cart_item['tipo'],
+                                    referencia_id=ref_id,
+                                    valor_cobrado=cart_item['valor']
+                                )
+                                db.add(novo_item)
+                                
+                            db.commit()
+                            st.session_state['pdv_cart'] = [] # Limpa o carrinho
+                            st.success(f"Atendimento {codigo_seq} lançado com sucesso! Movido para a aba 'Em andamento'.")
+                            st.rerun()
+                    
+                    if st.button("Limpar Carrinho", key="cart_clear_btn"):
+                        st.session_state['pdv_cart'] = []
+                        st.rerun()
 
     # ==========================================
     # ABA 2: Em Andamento
@@ -286,37 +358,35 @@ def render_fast_launch():
             cliente_at = db.query(Cliente).filter(Cliente.id == at.cliente_id).first()
             itens_at = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == at.id).all()
             
-            st.markdown(f"<div class='premium-card'>", unsafe_allow_html=True)
-            col1, col2 = st.columns([1, 1], vertical_alignment="center")
-            with col1:
-                st.markdown(f"#### 🚘 [{at.codigo}] {cliente_at.nome if cliente_at else 'Desconhecido'} - {cliente_at.placa_veiculo if cliente_at else ''}")
-                st.markdown(f"**Total:** R$ {at.valor_total:.2f} | **Pagamento:** {at.forma_pagamento}")
-                
-                detalhes = []
-                for i in itens_at:
-                    if i.tipo == "Serviço":
-                        s = db.query(Servico).filter(Servico.id == i.referencia_id).first()
-                        detalhes.append(f"🛠️ {s.nome if s else 'Serviço'}")
-                    else:
-                        p = db.query(Produto).filter(Produto.id == i.referencia_id).first()
-                        detalhes.append(f"📦 {p.nome if p else 'Produto'}")
-                st.markdown(" | ".join(detalhes))
-                
-            with col2:
-                col_btn1, col_btn2, col_btn3 = st.columns(3)
-                if col_btn1.button("✅ Concluir", key=f"concluir_{at.id}", use_container_width=True):
-                    at.status = "Finalizado"
-                    db.commit()
-                    st.success("Atendimento finalizado!")
-                    st.rerun()
+            with st.container(border=True):
+                col1, col2 = st.columns([1.2, 1], vertical_alignment="center")
+                with col1:
+                    st.markdown(f"#### 🚘 [{at.codigo}] {cliente_at.nome if cliente_at else 'Desconhecido'}")
+                    st.markdown(f"**Total:** R$ {at.valor_total:.2f} | **Pagamento:** {at.forma_pagamento}")
                     
-                if col_btn2.button("✏️ Editar", key=f"editar_{at.id}", use_container_width=True):
-                    dialog_editar_atendimento(at.id)
+                    detalhes = []
+                    for i in itens_at:
+                        if i.tipo == "Serviço":
+                            s = db.query(Servico).filter(Servico.id == i.referencia_id).first()
+                            detalhes.append(f"🛠️ {s.nome if s else 'Serviço'}")
+                        else:
+                            p = db.query(Produto).filter(Produto.id == i.referencia_id).first()
+                            detalhes.append(f"📦 {p.nome if p else 'Produto'}")
+                    st.markdown(" | ".join(detalhes))
                     
-                if col_btn3.button("❌ Excluir", key=f"excluir_{at.id}", use_container_width=True):
-                    dialog_cancelar_atendimento(at.id)
-                    
-            st.markdown("</div>", unsafe_allow_html=True)
+                with col2:
+                    col_btn1, col_btn2, col_btn3 = st.columns(3)
+                    if col_btn1.button("✅ Concluir", key=f"concluir_{at.id}", use_container_width=True):
+                        at.status = "Finalizado"
+                        db.commit()
+                        st.success("Atendimento finalizado!")
+                        st.rerun()
+                        
+                    if col_btn2.button("✏️ Editar", key=f"editar_{at.id}", use_container_width=True):
+                        dialog_editar_atendimento(at.id)
+                        
+                    if col_btn3.button("❌ Excluir", key=f"excluir_{at.id}", use_container_width=True):
+                        dialog_cancelar_atendimento(at.id)
 
     # ==========================================
     # ABA 3: Finalizado
@@ -325,11 +395,10 @@ def render_fast_launch():
         st.markdown("### Histórico de Atendimentos")
         
         # Filtros
-        st.markdown("<div class='premium-card'>", unsafe_allow_html=True)
-        col_f1, col_f2 = st.columns(2)
-        filtro_cliente = col_f1.selectbox("Filtrar por Cliente", ["Todos"] + [c.nome for c in clientes])
-        filtro_status = col_f2.selectbox("Status", ["Finalizado", "Cancelado"])
-        st.markdown("</div>", unsafe_allow_html=True)
+        with st.container(border=True):
+            col_f1, col_f2 = st.columns(2)
+            filtro_cliente = col_f1.selectbox("Filtrar por Cliente", ["Todos"] + [c.nome for c in clientes])
+            filtro_status = col_f2.selectbox("Status", ["Finalizado", "Cancelado"])
         
         query_finalizados = db.query(Atendimento).filter(Atendimento.status == filtro_status)
         if filtro_cliente != "Todos":
@@ -343,8 +412,9 @@ def render_fast_launch():
             
         for at in atendimentos_finalizados:
             cliente_at = db.query(Cliente).filter(Cliente.id == at.cliente_id).first()
-            cor_borda = "var(--success)" if at.status == "Finalizado" else "var(--danger)"
-            st.markdown(f"<div class='premium-card' style='border-left: 4px solid {cor_borda};'>", unsafe_allow_html=True)
-            st.markdown(f"#### {at.codigo} | {cliente_at.nome if cliente_at else 'Desconhecido'} - R$ {at.valor_total:.2f}")
-            st.markdown(f"**Data:** {at.data_criacao[:16].replace('T', ' ')} | **Pagamento:** {at.forma_pagamento}")
-            st.markdown("</div>", unsafe_allow_html=True)
+            
+            with st.container(border=True):
+                status_text = "🟢 Finalizado" if at.status == "Finalizado" else "🔴 Cancelado"
+                st.markdown(f"**{status_text}**")
+                st.markdown(f"#### {at.codigo} | {cliente_at.nome if cliente_at else 'Desconhecido'} - R$ {at.valor_total:.2f}")
+                st.markdown(f"**Data:** {at.data_criacao[:16].replace('T', ' ')} | **Pagamento:** {at.forma_pagamento}")
