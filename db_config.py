@@ -56,6 +56,7 @@ class Atendimento(Base):
     forma_pagamento = Column(String) # Débito, Crédito, Pix, Dinheiro
     data_criacao = Column(String)
     data_conclusao = Column(String)
+    observacoes = Column(String)
 
 class ItemAtendimento(Base):
     __tablename__ = "itens_atendimento"
@@ -145,6 +146,18 @@ def init_db():
             db.commit()
         except Exception as e:
             print("Erro ao migrar data_conclusao de atendimentos:", e)
+            db.rollback()
+
+    # 6. Migração para a coluna 'observacoes' em 'atendimentos'
+    try:
+        db.execute(text("SELECT observacoes FROM atendimentos LIMIT 1"))
+    except Exception:
+        try:
+            db.rollback()
+            db.execute(text("ALTER TABLE atendimentos ADD COLUMN observacoes VARCHAR"))
+            db.commit()
+        except Exception as e:
+            print("Erro ao migrar observacoes de atendimentos:", e)
             db.rollback()
 
     db.close()
