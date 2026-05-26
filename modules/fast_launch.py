@@ -215,42 +215,40 @@ def render_fast_launch():
     with col_s:
         # Toggle Caixa Aberto/Fechado (estilizado como um pill elegante)
         caixa_status = st.session_state.get('caixa_aberto', True)
-        btn_class = "caixa-aberto-btn" if caixa_status else "caixa-fechado-btn"
+        bg_color = "#34C759" if caixa_status else "#FF3B30"
         
         st.markdown(f"""
         <style>
-            .caixa-btn-container button {{
+            .st-key-btn_caixa_toggle button {{
+                background-color: {bg_color} !important;
+                color: #FFFFFF !important;
+                border: 1px solid {bg_color} !important;
                 border-radius: 20px !important;
                 font-weight: bold !important;
                 font-size: 11px !important;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
                 height: 32px !important;
                 white-space: nowrap !important;
-                transition: none !important;
+                transition: background-color 0.2s ease-in-out !important;
             }}
-            .caixa-aberto-btn button, .caixa-aberto-btn button:hover, .caixa-aberto-btn button:active, .caixa-aberto-btn button:focus {{
-                background-color: #34C759 !important;
+            .st-key-btn_caixa_toggle button:hover, 
+            .st-key-btn_caixa_toggle button:active, 
+            .st-key-btn_caixa_toggle button:focus {{
+                background-color: {bg_color} !important;
                 color: #FFFFFF !important;
-                border: 1px solid #34C759 !important;
-            }}
-            .caixa-fechado-btn button, .caixa-fechado-btn button:hover, .caixa-fechado-btn button:active, .caixa-fechado-btn button:focus {{
-                background-color: #FF3B30 !important;
-                color: #FFFFFF !important;
-                border: 1px solid #FF3B30 !important;
+                border-color: {bg_color} !important;
             }}
             /* Forçar a cor branca para os elementos de texto internos do Streamlit */
-            .caixa-aberto-btn button *, .caixa-fechado-btn button * {{
+            .st-key-btn_caixa_toggle button * {{
                 color: #FFFFFF !important;
             }}
         </style>
         """, unsafe_allow_html=True)
         
-        st.markdown(f'<div class="caixa-btn-container {btn_class}">', unsafe_allow_html=True)
         label = "🟢 CAIXA ABERTO" if caixa_status else "🔴 CAIXA FECHADO"
         if st.button(label, use_container_width=True, key="btn_caixa_toggle"):
             st.session_state['caixa_aberto'] = not caixa_status
             st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
     
     # Obter sessão do DB
     db = next(get_db())
