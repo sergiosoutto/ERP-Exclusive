@@ -37,8 +37,8 @@ def inject_custom_css():
         /* Estilo da área de conteúdo (Centralizado e Compacto para Tablet) */
         .block-container {
             max-width: 760px !important;
-            padding-top: 1.5rem !important;
-            padding-bottom: 2rem !important;
+            padding-top: 0.5rem !important;
+            padding-bottom: 1rem !important;
             padding-left: 1rem !important;
             padding-right: 1rem !important;
             margin: 0 auto !important;
@@ -75,9 +75,22 @@ def inject_custom_css():
         h1, h2, h3, h4, h5, h6 {
             color: var(--text-main) !important;
             font-weight: 600 !important;
+            margin-top: 4px !important;
+            margin-bottom: 4px !important;
         }
         p, span, label {
             color: var(--text-main);
+        }
+
+        /* Ajuste do divisor */
+        hr {
+            margin-top: 8px !important;
+            margin-bottom: 8px !important;
+        }
+
+        /* Reduzir espaçamento vertical geral dos blocos do Streamlit */
+        div[data-testid="stVerticalBlock"] {
+            gap: 0.45rem !important;
         }
 
         /* Ajuste do botão para formato reduzido, compacto e alinhado */

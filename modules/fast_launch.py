@@ -1,6 +1,13 @@
 import streamlit as st
 from db_config import get_db, Cliente, Servico, Produto, Atendimento, ItemAtendimento
 from datetime import datetime, timedelta, timezone
+import unicodedata
+
+# Helper para remover acentuação de strings para pesquisa insensível a acentos
+def remover_acentos(texto):
+    if not texto:
+        return ""
+    return "".join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
 
 # Tratamento para st.dialog independente da versão exata 1.34/1.35+
 dialog_decorator = st.dialog if hasattr(st, "dialog") else st.experimental_dialog
@@ -290,19 +297,20 @@ def render_fast_launch():
                 if st.button("+ Novo Cliente", use_container_width=True, disabled=not caixa_aberto):
                     dialog_novo_cliente()
             
-            # Filtrar a lista de opções com base na pesquisa
+            # Filtrar a lista de opções com base na pesquisa (ignorando acentuação)
             termo = busca_cliente.strip().lower()
             cliente_opcoes = ["-- Selecione o Cliente --"]
             for c in clientes:
                 if c.codigo == "CLI-0000":
                     continue # Não permite cliente avulso
                 
-                nome = (c.nome or "").lower()
-                placa = (c.placa_veiculo or "").lower()
-                modelo = (c.modelo_veiculo or "").lower()
-                codigo = (c.codigo or "").lower()
+                nome = remover_acentos(c.nome or "").lower()
+                placa = remover_acentos(c.placa_veiculo or "").lower()
+                modelo = remover_acentos(c.modelo_veiculo or "").lower()
+                codigo = remover_acentos(c.codigo or "").lower()
                 
-                if termo and (termo not in nome and termo not in placa and termo not in modelo and termo not in codigo):
+                termo_limpo = remover_acentos(termo)
+                if termo_limpo and (termo_limpo not in nome and termo_limpo not in placa and termo_limpo not in modelo and termo_limpo not in codigo):
                     continue
                     
                 tag_fidelidade = ""
@@ -313,16 +321,18 @@ def render_fast_launch():
                     f"{c.codigo} | {c.nome}{tag_fidelidade} - {c.modelo_veiculo or 'Sem Modelo'} ({c.placa_veiculo or 'Sem Placa'})"
                 )
             
-            st.markdown(f"<label style='font-size:14px; font-weight:500; color:var(--text-main);'>{gold_icon('user')} Selecionar Cliente</label>", unsafe_allow_html=True)
-            cliente_selecionado = st.selectbox("Selecione o Cliente", cliente_opcoes, index=0, label_visibility="collapsed", disabled=not caixa_aberto)
+            st.markdown(f"<label style='font-size:13px; font-weight:500; color:var(--text-main); margin-bottom:-4px; display:block;'>{gold_icon('user')} Selecionar Cliente</label>", unsafe_allow_html=True)
+            # Pré-seleção automática e imediata caso haja exatamente uma única correspondência
+            index_sel = 1 if len(cliente_opcoes) == 2 else 0
+            cliente_selecionado = st.selectbox("Selecione o Cliente", cliente_opcoes, index=index_sel, label_visibility="collapsed", disabled=not caixa_aberto)
                 
-            st.markdown("---")
+            st.markdown("<hr style='margin:8px 0; border:0; border-top:1px solid #E5E5EA;'>", unsafe_allow_html=True)
 
             # Passo 2: O que está lançando (Permite vender Serviço ou Produto individual)
             tipo_venda = st.radio("O que está vendendo?", ["Serviço", "Produto"], horizontal=True, disabled=not caixa_aberto)
             
             if tipo_venda == "Serviço":
-                st.markdown(f"<label style='font-size:14px; font-weight:500; color:var(--text-main);'>{gold_icon('service')} Selecionar Serviço Principal</label>", unsafe_allow_html=True)
+                st.markdown(f"<label style='font-size:13px; font-weight:500; color:var(--text-main); margin-bottom:-4px; display:block;'>{gold_icon('service')} Selecionar Serviço Principal</label>", unsafe_allow_html=True)
                 servico_opcoes = [s.nome for s in servicos]
                 item_selecionado = st.selectbox("Serviço Principal", servico_opcoes if servico_opcoes else ["Nenhum serviço cadastrado"], label_visibility="collapsed", disabled=not caixa_aberto)
                 
@@ -331,7 +341,7 @@ def render_fast_launch():
                     serv = next((s for s in servicos if s.nome == item_selecionado), None)
                     valor_sugerido = serv.preco_padrao if serv else 0.0
             else:
-                st.markdown(f"<label style='font-size:14px; font-weight:500; color:var(--text-main);'>{gold_icon('box')} Selecionar Produto</label>", unsafe_allow_html=True)
+                st.markdown(f"<label style='font-size:13px; font-weight:500; color:var(--text-main); margin-bottom:-4px; display:block;'>{gold_icon('box')} Selecionar Produto</label>", unsafe_allow_html=True)
                 produto_opcoes = [p.nome for p in produtos]
                 item_selecionado = st.selectbox("Produto Principal", produto_opcoes if produto_opcoes else ["Nenhum produto cadastrado"], label_visibility="collapsed", disabled=not caixa_aberto)
                 
@@ -343,10 +353,10 @@ def render_fast_launch():
             col_preco, col_space = st.columns([1.5, 2], vertical_alignment="bottom")
             valor_final = col_preco.number_input("Valor (R$)", value=valor_sugerido, min_value=0.0, disabled=not caixa_aberto)
             
-            st.markdown("---")
+            st.markdown("<hr style='margin:8px 0; border:0; border-top:1px solid #E5E5EA;'>", unsafe_allow_html=True)
             
             # Passo 3: Forma de Pagamento em Botões/Quadrados elegantes lado a lado (Débito, Pix, Crédito, Dinheiro)
-            st.markdown(f"<label style='font-size:14px; font-weight:500; color:var(--text-main);'>{gold_icon('payment')} Selecionar Forma de Pagamento</label>", unsafe_allow_html=True)
+            st.markdown(f"<label style='font-size:13px; font-weight:500; color:var(--text-main); margin-bottom:-4px; display:block;'>{gold_icon('payment')} Selecionar Forma de Pagamento</label>", unsafe_allow_html=True)
             
             st.markdown("""
             <style>
@@ -467,7 +477,7 @@ def render_fast_launch():
                     st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
             
-            st.markdown("---")
+            st.markdown("<hr style='margin:8px 0; border:0; border-top:1px solid #E5E5EA;'>", unsafe_allow_html=True)
             
             # Passo 4: Lançamento (Permite venda direta ou patio para produtos)
             if tipo_venda == "Produto":
