@@ -8,7 +8,7 @@ from db_config import init_db
 st.set_page_config(
     page_title="ERP Premium | Estética Automotiva",
     page_icon="🚘",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="auto"
 )
 
@@ -34,14 +34,12 @@ def inject_custom_css():
             --accent: #5E5CE6;
         }
 
-        /* Estilo da área de conteúdo (Centralizado e Compacto para Tablet) */
+        /* Estilo da área de conteúdo (Full width adaptável) */
         .block-container {
-            max-width: 760px !important;
-            padding-top: 0.5rem !important;
-            padding-bottom: 1rem !important;
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
-            margin: 0 auto !important;
+            padding-top: 2rem !important;
+            padding-bottom: 2rem !important;
+            padding-left: 3rem !important;
+            padding-right: 3rem !important;
         }
 
         /* Fontes e Fundo do App */
