@@ -206,15 +206,8 @@ def main():
 
 
     elif selected == "Gestão Financeira":
-        st.title("💼 Gestão Financeira")
-        st.markdown("""
-        <div class="premium-card">
-            <h3 style='margin-top: 0;'>Posição Consolidada</h3>
-            <p>Trifurcação Bancária Lógica (B2B, B2C, Reserva PIX) e Controle de Pró-labore.</p>
-            <hr style='border: 0.5px solid #E5E5EA;'>
-            <p style="color: var(--accent);"><i>Aguardando comando para desenvolvimento deste módulo...</i></p>
-        </div>
-        """, unsafe_allow_html=True)
+        from modules.financial import render_financial
+        render_financial()
         
     else:
         st.title(selected)

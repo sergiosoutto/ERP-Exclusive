@@ -190,6 +190,13 @@ def dialog_concluir_atendimento(at_id):
         at.observacoes = obs
         db.commit()
         
+        # Integration with Financial Module
+        try:
+            from modules.financial import registrar_receita_pdv
+            registrar_receita_pdv(at.id, db)
+        except Exception as e:
+            pass
+        
         # Salva a mensagem no estado da sessão para persistir no diálogo de sucesso
         st.session_state['success_msg'] = f"Atendimento {at.codigo} concluído com sucesso!"
         st.rerun()
@@ -524,7 +531,16 @@ def render_fast_launch():
                             )
                             db.add(novo_item)
                         
+                        
                         db.commit()
+                        
+                        # Integration with Financial Module
+                        try:
+                            if status_at == "Finalizado":
+                                from modules.financial import registrar_receita_pdv
+                                registrar_receita_pdv(novo_atendimento.id, db)
+                        except Exception as e:
+                            pass
                         st.session_state['success_msg'] = f"Venda de {item_selecionado} ({codigo_seq}) registrada com sucesso!"
                         st.rerun()
                     else:
