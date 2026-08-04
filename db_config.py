@@ -26,12 +26,14 @@ class CategoriaFinanceira(Base):
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, unique=True, index=True)
     tipo = Column(String) # "Receita" ou "Despesa"
+    banco_padrao_id = Column(Integer, ForeignKey("contas_bancarias.id"), nullable=True)
 
 class SubcategoriaFinanceira(Base):
     __tablename__ = "subcategorias_financeiras"
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, index=True)
     categoria_id = Column(Integer, ForeignKey("categorias_financeiras.id"))
+    banco_padrao_id = Column(Integer, ForeignKey("contas_bancarias.id"), nullable=True)
 
 class LancamentoFinanceiro(Base):
     __tablename__ = "lancamentos_financeiros"
@@ -191,6 +193,18 @@ def init_db():
         try:
             db.rollback()
             db.execute(text("ALTER TABLE lancamentos_financeiros ADD COLUMN subcategoria_id INTEGER"))
+            db.commit()
+        except Exception:
+            db.rollback()
+
+    # 8. Migração para 'banco_padrao_id' em 'categorias_financeiras' e 'subcategorias_financeiras'
+    try:
+        db.execute(text("SELECT banco_padrao_id FROM categorias_financeiras LIMIT 1"))
+    except Exception:
+        try:
+            db.rollback()
+            db.execute(text("ALTER TABLE categorias_financeiras ADD COLUMN banco_padrao_id INTEGER"))
+            db.execute(text("ALTER TABLE subcategorias_financeiras ADD COLUMN banco_padrao_id INTEGER"))
             db.commit()
         except Exception:
             db.rollback()
