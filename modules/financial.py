@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from db_config import engine, get_db, ContaBancaria, CategoriaFinanceira, LancamentoFinanceiro, OrcamentoMeta, Atendimento, Cliente
+from db_config import engine, get_db, ContaBancaria, CategoriaFinanceira, SubcategoriaFinanceira, LancamentoFinanceiro, OrcamentoMeta, Atendimento, Cliente
 from modules.fast_launch import gold_icon, dialog_decorator
 
 def registrar_receita_pdv(atendimento_id, db):
@@ -14,7 +14,7 @@ def registrar_receita_pdv(atendimento_id, db):
         return
         
     forma = at.forma_pagamento
-    conta_nome = "Banco 2 (Varejo B2C)" 
+    conta_nome = "Banco 2 (Varejo B2C)"
     if forma in ["Crédito", "Débito"]:
         conta_nome = "Maquininha"
     elif forma == "Pix":
@@ -48,7 +48,6 @@ def registrar_receita_pdv(atendimento_id, db):
 @dialog_decorator("Novo Lançamento")
 def dialog_novo_lancamento():
     db = next(get_db())
-    
     tipo = st.radio("Tipo de Lançamento", ["Despesa", "Receita"], horizontal=True, label_visibility="collapsed")
     
     st.markdown("<br>", unsafe_allow_html=True)
@@ -57,15 +56,22 @@ def dialog_novo_lancamento():
     categorias = db.query(CategoriaFinanceira).filter(CategoriaFinanceira.tipo == tipo).all()
     cat_nomes = [c.nome for c in categorias]
     
+    col1, col2 = st.columns(2)
+    with col1:
+        categoria_sel = st.selectbox("Categoria", options=cat_nomes if cat_nomes else ["Nenhuma"])
+    with col2:
+        subcategorias = []
+        if categoria_sel != "Nenhuma":
+            cat = db.query(CategoriaFinanceira).filter(CategoriaFinanceira.nome == categoria_sel).first()
+            if cat:
+                subs = db.query(SubcategoriaFinanceira).filter(SubcategoriaFinanceira.categoria_id == cat.id).all()
+                subcategorias = [s.nome for s in subs]
+        subcat_sel = st.selectbox("Subcategoria (Opcional)", options=["Nenhuma"] + subcategorias)
+        
     contas = db.query(ContaBancaria).all()
     contas_nomes = [c.nome for c in contas]
     
-    col1, col2 = st.columns(2)
-    with col1:
-        conta_sel = st.selectbox("Conta Bancária", options=contas_nomes if contas_nomes else ["Nenhuma"])
-    with col2:
-        categoria_sel = st.selectbox("Categoria", options=cat_nomes if cat_nomes else ["Nenhuma"])
-    
+    conta_sel = st.selectbox("Conta Bancária", options=contas_nomes if contas_nomes else ["Nenhuma"])
     desc = st.text_input("Descrição", placeholder="Ex: Conta de Luz")
     
     col3, col4 = st.columns(2)
@@ -86,6 +92,7 @@ def dialog_novo_lancamento():
         if st.button("Salvar", type="primary", use_container_width=True):
             cat = db.query(CategoriaFinanceira).filter(CategoriaFinanceira.nome == categoria_sel).first()
             cta = db.query(ContaBancaria).filter(ContaBancaria.nome == conta_sel).first()
+            subcat = db.query(SubcategoriaFinanceira).filter(SubcategoriaFinanceira.nome == subcat_sel).first() if subcat_sel != "Nenhuma" else None
             
             if cat and cta and desc:
                 novo = LancamentoFinanceiro(
@@ -98,6 +105,7 @@ def dialog_novo_lancamento():
                     status=status,
                     recorrencia=recorrencia,
                     categoria_id=cat.id,
+                    subcategoria_id=subcat.id if subcat else None,
                     conta_id=cta.id
                 )
                 db.add(novo)
@@ -172,18 +180,6 @@ def dialog_transferencia():
         if c_origem and c_destino:
             c_origem.saldo_atual -= valor
             c_destino.saldo_atual += valor
-            
-            # Registrar lançamentos para histórico (opcional)
-            cat_transf = db.query(CategoriaFinanceira).filter(CategoriaFinanceira.nome == "Transferência Interna").first()
-            if not cat_transf:
-                cat_transf = CategoriaFinanceira(nome="Transferência Interna", tipo="Despesa")
-                db.add(cat_transf)
-                db.flush()
-                
-            hoje = datetime.now().strftime('%Y-%m-%d')
-            saida = LancamentoFinanceiro(descricao=f"Transf. para {destino}", tipo="Despesa", valor=valor, status="Pago", data_vencimento=hoje, data_pagamento=hoje, conta_id=c_origem.id, categoria_id=cat_transf.id)
-            entrada = LancamentoFinanceiro(descricao=f"Transf. de {origem}", tipo="Receita", valor=valor, status="Pago", data_vencimento=hoje, data_pagamento=hoje, conta_id=c_destino.id, categoria_id=cat_transf.id)
-            db.add_all([saida, entrada])
             db.commit()
             st.success("Transferência realizada com sucesso!")
             st.rerun()
@@ -233,6 +229,22 @@ def dialog_nova_categoria():
             db.add(n_cat)
             db.commit()
             st.rerun()
+
+@dialog_decorator("Nova Subcategoria")
+def dialog_nova_subcategoria():
+    db = next(get_db())
+    categorias = db.query(CategoriaFinanceira).all()
+    cat_nomes = [c.nome for c in categorias]
+    cat_sel = st.selectbox("Categoria Pai", options=cat_nomes if cat_nomes else ["Nenhuma"])
+    nome = st.text_input("Nome da Subcategoria")
+    if st.button("Salvar Subcategoria", type="primary", use_container_width=True):
+        if nome and cat_sel != "Nenhuma":
+            cat = db.query(CategoriaFinanceira).filter(CategoriaFinanceira.nome == cat_sel).first()
+            if cat:
+                n_sub = SubcategoriaFinanceira(nome=nome, categoria_id=cat.id)
+                db.add(n_sub)
+                db.commit()
+                st.rerun()
 
 def render_financial():
     st.markdown(f"<h2 style='margin-top:0;'>{gold_icon('wallet2')} Gestão Financeira</h2>", unsafe_allow_html=True)
@@ -285,7 +297,6 @@ def render_financial():
         despesas_pendentes = sum(l.valor for l in lancamentos if l.tipo == "Despesa" and l.status == "Pendente")
         
         saldo_contas = sum(c.saldo_atual for c in db.query(ContaBancaria).all())
-        
         saldo_previsto_final = saldo_contas + receitas_pendentes - despesas_pendentes
         
         st.markdown(f"""
@@ -347,10 +358,10 @@ def render_financial():
             df = pd.DataFrame([{
                 "Data": l.data_vencimento,
                 "Descrição": l.descricao,
+                "Categoria": db.query(CategoriaFinanceira).filter(CategoriaFinanceira.id == l.categoria_id).first().nome if l.categoria_id else "",
                 "Tipo": l.tipo,
                 "Valor": f"R$ {l.valor:,.2f}",
-                "Status": l.status,
-                "Recorrência": l.recorrencia
+                "Status": l.status
             } for l in lancamentos])
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
@@ -378,31 +389,50 @@ def render_financial():
         
         for i, c in enumerate(contas):
             with cols[i % 3]:
-                st.markdown(f"""
-                <div class='premium-card'>
-                    <div style="display:flex; justify-content: space-between;">
-                        <h4 style="margin:0;">{c.nome}</h4>
-                        {gold_icon('bank')}
-                    </div>
-                    <h3 style='color: {"#34C759" if c.saldo_atual >= 0 else "#FF3B30"}; margin-top: 5px;'>R$ {c.saldo_atual:,.2f}</h3>
-                </div>
-                """, unsafe_allow_html=True)
-                if st.button("Editar", key=f"edit_banco_{c.id}"):
+                html_card = (
+                    f"<div class='premium-card'>"
+                    f"<div style='display:flex; justify-content: space-between;'>"
+                    f"<h4 style='margin:0;'>{c.nome}</h4>"
+                    f"{gold_icon('bank')}"
+                    f"</div>"
+                    f"<h3 style='color: {'#34C759' if c.saldo_atual >= 0 else '#FF3B30'}; margin-top: 5px;'>R$ {c.saldo_atual:,.2f}</h3>"
+                    f"</div>"
+                )
+                st.markdown(html_card, unsafe_allow_html=True)
+                if st.button("Editar / Excluir", key=f"edit_banco_{c.id}"):
                     dialog_gerenciar_conta(c.id)
             
     with tab4:
         st.markdown(f"### {gold_icon('tags')} Categorias Financeiras", unsafe_allow_html=True)
-        if st.button("+ Nova Categoria"):
-            dialog_nova_categoria()
-            
+        
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            if st.button("+ Nova Categoria", use_container_width=True):
+                dialog_nova_categoria()
+        with col_c2:
+            if st.button("+ Nova Subcategoria", use_container_width=True):
+                dialog_nova_subcategoria()
+                
+        st.markdown("---")
         categorias = db.query(CategoriaFinanceira).all()
         if categorias:
             for cat in categorias:
-                col_c1, col_c2 = st.columns([4, 1])
-                with col_c1:
-                    st.markdown(f"<div class='premium-card'><p style='margin:0;'><b>{cat.nome}</b> ({cat.tipo})</p></div>", unsafe_allow_html=True)
-                with col_c2:
-                    if st.button("Excluir", key=f"excluir_cat_{cat.id}", use_container_width=True):
+                with st.expander(f"{cat.nome} ({cat.tipo})"):
+                    if st.button(f"Excluir {cat.nome}", key=f"excluir_cat_{cat.id}"):
                         db.delete(cat)
                         db.commit()
                         st.rerun()
+                        
+                    subs = db.query(SubcategoriaFinanceira).filter(SubcategoriaFinanceira.categoria_id == cat.id).all()
+                    if subs:
+                        for s in subs:
+                            col_s1, col_s2 = st.columns([3, 1])
+                            with col_s1:
+                                st.write(f"- {s.nome}")
+                            with col_s2:
+                                if st.button("Excluir", key=f"excluir_sub_{s.id}", help="Excluir subcategoria"):
+                                    db.delete(s)
+                                    db.commit()
+                                    st.rerun()
+                    else:
+                        st.write("Sem subcategorias.")

@@ -191,6 +191,17 @@ def main():
             }
         )
 
+    # Injeta CSS dinâmico para centralizar apenas se for Fluxo do Dia
+    if selected == "Fluxo do dia":
+        st.markdown("""
+        <style>
+            .block-container {
+                max-width: 760px !important;
+                margin: 0 auto !important;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+
     # ==========================================
     # 5. Roteamento de Módulos (Views)
     # ==========================================

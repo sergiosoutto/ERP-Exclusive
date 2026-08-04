@@ -27,6 +27,12 @@ class CategoriaFinanceira(Base):
     nome = Column(String, unique=True, index=True)
     tipo = Column(String) # "Receita" ou "Despesa"
 
+class SubcategoriaFinanceira(Base):
+    __tablename__ = "subcategorias_financeiras"
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, index=True)
+    categoria_id = Column(Integer, ForeignKey("categorias_financeiras.id"))
+
 class LancamentoFinanceiro(Base):
     __tablename__ = "lancamentos_financeiros"
     id = Column(Integer, primary_key=True, index=True)
@@ -39,6 +45,7 @@ class LancamentoFinanceiro(Base):
     status = Column(String, default="Pendente") # "Pendente" ou "Pago"
     recorrencia = Column(String, default="Único") # "Único", "Parcelado", "Fixo"
     categoria_id = Column(Integer, ForeignKey("categorias_financeiras.id"))
+    subcategoria_id = Column(Integer, ForeignKey("subcategorias_financeiras.id"), nullable=True)
     conta_id = Column(Integer, ForeignKey("contas_bancarias.id"))
     atendimento_id = Column(Integer, ForeignKey("atendimentos.id"), nullable=True)
 
@@ -173,6 +180,17 @@ def init_db():
         try:
             db.rollback()
             db.execute(text("ALTER TABLE atendimentos ADD COLUMN observacoes VARCHAR"))
+            db.commit()
+        except Exception:
+            db.rollback()
+            
+    # 7. Migração para 'subcategoria_id' em 'lancamentos_financeiros'
+    try:
+        db.execute(text("SELECT subcategoria_id FROM lancamentos_financeiros LIMIT 1"))
+    except Exception:
+        try:
+            db.rollback()
+            db.execute(text("ALTER TABLE lancamentos_financeiros ADD COLUMN subcategoria_id INTEGER"))
             db.commit()
         except Exception:
             db.rollback()
