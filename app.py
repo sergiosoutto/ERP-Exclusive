@@ -151,7 +151,7 @@ def main():
     # Sidebar
     with st.sidebar:
         gold_car_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:8px;"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><circle cx="17" cy="17" r="2"></circle><path d="M13 17H9"></path></svg>'
-        st.markdown(f"<h2 style='text-align: center; color: #1D1D1F; font-size: 22px;'>{gold_car_svg}ERP Premium</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align: center; color: #1D1D1F; font-size: 22px;'>{gold_car_svg} ERP Nexus</h2>", unsafe_allow_html=True)
         st.markdown(f"<p style='text-align: center;'>Acesso: <b>{st.session_state['user_role']}</b></p>", unsafe_allow_html=True)
         st.markdown("---")
         
@@ -199,6 +199,10 @@ def main():
     if selected == "Fluxo do dia":
         from modules.fast_launch import render_fast_launch
         render_fast_launch()
+
+    elif selected == "Transações":
+        from modules.transactions import render_transactions
+        render_transactions()
 
 
     elif selected == "Gestão Financeira":
