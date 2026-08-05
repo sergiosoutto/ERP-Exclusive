@@ -153,13 +153,12 @@ def dialog_novo_lancamento():
                         cta.saldo_atual -= valor_real
                         
                 db.commit()
-                st.success("Lançamento salvo com sucesso!")
-                st.rerun()
+                st.toast("Lançamento salvo com sucesso!", icon="✅")
             else:
                 st.error("Preencha a descrição, categoria e certifique-se de haver uma conta válida.")
     with col_btn2:
-        if st.button("Cancelar", use_container_width=True):
-            st.rerun()
+        if st.button("Fechar", use_container_width=True):
+            st.toast("Fechando...", icon="ℹ️")
 
 @dialog_decorator("Gerenciar Pendentes")
 def dialog_pendentes():
@@ -200,11 +199,10 @@ def dialog_pendentes():
                     p.data_vencimento = n_dat.strftime('%Y-%m-%d')
                     db.commit()
                     st.session_state[edit_key] = False
-                    st.rerun()
+                    st.toast("Lançamento atualizado!", icon="✅")
             with c_c:
                 if st.button("Cancelar", use_container_width=True, key=f"cx_{p.id}"):
                     st.session_state[edit_key] = False
-                    st.rerun()
         else:
             # Modo Visualização
             col1, col2 = st.columns([1, 1.2])
@@ -246,18 +244,17 @@ def dialog_pendentes():
                             else:
                                 cta.saldo_atual -= p.valor
                             db.commit()
-                            st.rerun()
+                            st.toast("Baixa realizada com sucesso!", icon="✅")
                         else:
                             st.error("Banco não encontrado.")
                 with c2:
                     if st.button("Editar", key=f"ed_{p.id}", use_container_width=True):
                         st.session_state[edit_key] = True
-                        st.rerun()
                 with c3:
                     if st.button("Excluir", key=f"excluir_pend_{p.id}", use_container_width=True):
                         db.delete(p)
                         db.commit()
-                        st.rerun()
+                        st.toast("Lançamento excluído!", icon="✅")
 
 @dialog_decorator("Nova Transferência Interna")
 def dialog_transferencia():
@@ -270,19 +267,18 @@ def dialog_transferencia():
     valor = st.number_input("Valor da Transferência (R$)", min_value=0.01, format="%.2f")
     
     if st.button("Realizar Transferência", type="primary", use_container_width=True):
-        if origem == destino:
-            st.error("As contas não podem ser iguais.")
-            return
-        
-        c_origem = db.query(ContaBancaria).filter(ContaBancaria.nome == origem).first()
-        c_destino = db.query(ContaBancaria).filter(ContaBancaria.nome == destino).first()
-        
-        if c_origem and c_destino:
-            c_origem.saldo_atual -= valor
-            c_destino.saldo_atual += valor
-            db.commit()
-            st.success("Transferência realizada com sucesso!")
-            st.rerun()
+        if origem and destino and origem != destino:
+            c_origem = db.query(ContaBancaria).filter(ContaBancaria.nome == origem).first()
+            c_destino = db.query(ContaBancaria).filter(ContaBancaria.nome == destino).first()
+            if c_origem.saldo_atual >= valor:
+                c_origem.saldo_atual -= valor
+                c_destino.saldo_atual += valor
+                db.commit()
+                st.toast("Transferência realizada com sucesso!", icon="✅")
+            else:
+                st.error("Saldo insuficiente na conta de origem.")
+        else:
+            st.error("Selecione contas diferentes e válidas.")
 
 @dialog_decorator("Gerenciar Conta")
 def dialog_gerenciar_conta(conta_id):
@@ -299,12 +295,12 @@ def dialog_gerenciar_conta(conta_id):
             c.nome = novo_nome
             c.saldo_atual = novo_saldo
             db.commit()
-            st.rerun()
+            st.toast("Conta atualizada!", icon="✅")
     with col2:
         if st.button("Excluir Conta", use_container_width=True):
             db.delete(c)
             db.commit()
-            st.rerun()
+            st.toast("Conta excluída!", icon="✅")
 
 @dialog_decorator("Nova Conta Bancária")
 def dialog_nova_conta():
@@ -316,7 +312,7 @@ def dialog_nova_conta():
             nc = ContaBancaria(nome=nome, saldo_atual=saldo)
             db.add(nc)
             db.commit()
-            st.rerun()
+            st.toast("Conta criada!", icon="✅")
 
 @dialog_decorator("Nova Categoria")
 def dialog_nova_categoria():
@@ -325,20 +321,26 @@ def dialog_nova_categoria():
     nome = st.text_input("Nome da Categoria")
     
     contas = db.query(ContaBancaria).all()
-    contas_nomes = ["Nenhum"] + [c.nome for c in contas]
-    banco_padrao = st.selectbox("Banco Padrão para Baixa (Opcional)", contas_nomes)
+    contas_nomes = ["Nenhum (Opcional)"] + [c.nome for c in contas]
+    banco_sel = st.selectbox("Banco Padrão para Baixa", contas_nomes)
     
     if st.button("Salvar Categoria", type="primary", use_container_width=True):
         if nome:
-            bp_id = None
-            if banco_padrao != "Nenhum":
-                banco = db.query(ContaBancaria).filter(ContaBancaria.nome == banco_padrao).first()
-                if banco: bp_id = banco.id
-                
-            n_cat = CategoriaFinanceira(nome=nome, tipo=tipo, banco_padrao_id=bp_id)
-            db.add(n_cat)
-            db.commit()
-            st.rerun()
+            banco_id = None
+            if banco_sel != "Nenhum (Opcional)":
+                banco = db.query(ContaBancaria).filter(ContaBancaria.nome == banco_sel).first()
+                if banco:
+                    banco_id = banco.id
+            nova_cat = CategoriaFinanceira(nome=nome, tipo=tipo, banco_padrao_id=banco_id)
+            db.add(nova_cat)
+            try:
+                db.commit()
+                st.toast("Categoria criada com sucesso!", icon="✅")
+            except Exception:
+                db.rollback()
+                st.error("Erro: Já existe uma categoria com este nome.")
+        else:
+            st.error("O nome da categoria é obrigatório.")
 
 @dialog_decorator("Nova Subcategoria")
 def dialog_nova_subcategoria():
@@ -364,7 +366,7 @@ def dialog_nova_subcategoria():
                 n_sub = SubcategoriaFinanceira(nome=nome, categoria_id=cat.id, banco_padrao_id=bp_id)
                 db.add(n_sub)
                 db.commit()
-                st.rerun()
+                st.toast("Subcategoria criada!", icon="✅")
 
 def render_financial():
     st.markdown(f"<h2 style='margin-top:0;'>{gold_icon('wallet2')} Gestão Financeira</h2>", unsafe_allow_html=True)
