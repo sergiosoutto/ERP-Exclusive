@@ -172,8 +172,10 @@ def dialog_pendentes():
     contas = db.query(ContaBancaria).all()
     contas_nomes = ["Usar Banco Padrão"] + [c.nome for c in contas]
     
-    for p in pendentes:
-        st.markdown(f"<div class='premium-card' style='margin-bottom: 10px; padding: 15px;'>", unsafe_allow_html=True)
+    for idx, p in enumerate(pendentes):
+        if idx > 0:
+            st.divider()
+            
         edit_key = f"edit_pend_{p.id}"
         
         if st.session_state.get(edit_key, False):
@@ -256,7 +258,6 @@ def dialog_pendentes():
                         db.delete(p)
                         db.commit()
                         st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
 
 @dialog_decorator("Nova Transferência Interna")
 def dialog_transferencia():
