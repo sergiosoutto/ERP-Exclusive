@@ -173,52 +173,89 @@ def dialog_pendentes():
     contas_nomes = ["Usar Banco Padrão"] + [c.nome for c in contas]
     
     for p in pendentes:
-        st.markdown(f"<div class='premium-card' style='margin-bottom: 5px; padding: 10px;'>", unsafe_allow_html=True)
-        col1, col2 = st.columns([2.5, 1.5])
-        with col1:
-            st.markdown(f"<p style='margin:0; font-weight:bold;'>{p.descricao}</p>", unsafe_allow_html=True)
-            cor = "#34C759" if p.tipo == "Receita" else "#FF3B30"
-            st.markdown(f"<p style='margin:0; font-size:12px; color:{cor};'>R$ {p.valor_previsto:,.2f} ({p.tipo})</p>", unsafe_allow_html=True)
-            st.markdown(f"<span style='font-size:10px; color:#86868B;'>Vencimento: {p.data_vencimento}</span>", unsafe_allow_html=True)
+        st.markdown(f"<div class='premium-card' style='margin-bottom: 10px; padding: 15px;'>", unsafe_allow_html=True)
+        edit_key = f"edit_pend_{p.id}"
+        
+        if st.session_state.get(edit_key, False):
+            # Modo Edição
+            n_desc = st.text_input("Descrição", value=p.descricao, key=f"ndesc_{p.id}")
+            c_val, c_dat = st.columns(2)
+            with c_val:
+                n_val = st.number_input("Valor Previsto", value=p.valor_previsto, format="%.2f", key=f"nval_{p.id}")
+            with c_dat:
+                from datetime import datetime
+                try:
+                    d_venc = datetime.strptime(p.data_vencimento, '%Y-%m-%d').date()
+                except:
+                    d_venc = datetime.now().date()
+                n_dat = st.date_input("Vencimento", value=d_venc, key=f"ndat_{p.id}")
             
-            # Selectbox para confirmar banco de baixa
-            banco_sel = st.selectbox("Confirmar Banco para Baixa", contas_nomes, key=f"banco_pend_{p.id}", label_visibility="collapsed")
-            
-        with col2:
-            st.markdown("<div style='display: flex; gap: 5px; margin-top: 10px;'>", unsafe_allow_html=True)
-            if st.button("Baixar", key=f"baixar_{p.id}", use_container_width=True, type="primary"):
-                cta = None
-                if banco_sel != "Usar Banco Padrão":
-                    cta = db.query(ContaBancaria).filter(ContaBancaria.nome == banco_sel).first()
-                else:
-                    cat = db.query(CategoriaFinanceira).filter(CategoriaFinanceira.id == p.categoria_id).first()
-                    subcat = db.query(SubcategoriaFinanceira).filter(SubcategoriaFinanceira.id == p.subcategoria_id).first() if p.subcategoria_id else None
-                    bp_id = subcat.banco_padrao_id if subcat and subcat.banco_padrao_id else (cat.banco_padrao_id if cat else None)
-                    
-                    if bp_id:
-                        cta = db.query(ContaBancaria).filter(ContaBancaria.id == bp_id).first()
-                    else:
-                        cta = db.query(ContaBancaria).filter(ContaBancaria.id == p.conta_id).first() # Fallback para a conta vinculada original
-                
-                if cta:
-                    p.status = "Pago"
-                    p.data_pagamento = datetime.now().strftime('%Y-%m-%d')
-                    p.valor = p.valor_previsto # Assume que pagou o previsto
-                    p.conta_id = cta.id
-                    
-                    if p.tipo == "Receita":
-                        cta.saldo_atual += p.valor
-                    else:
-                        cta.saldo_atual -= p.valor
+            c_s, c_c = st.columns(2)
+            with c_s:
+                if st.button("Salvar Alterações", type="primary", use_container_width=True, key=f"sv_{p.id}"):
+                    p.descricao = n_desc
+                    p.valor_previsto = n_val
+                    p.data_vencimento = n_dat.strftime('%Y-%m-%d')
                     db.commit()
+                    st.session_state[edit_key] = False
                     st.rerun()
-                else:
-                    st.error("Erro: Banco destino não encontrado.")
-                    
-            if st.button("Excluir", key=f"excluir_pend_{p.id}", use_container_width=True):
-                db.delete(p)
-                db.commit()
-                st.rerun()
+            with c_c:
+                if st.button("Cancelar", use_container_width=True, key=f"cx_{p.id}"):
+                    st.session_state[edit_key] = False
+                    st.rerun()
+        else:
+            # Modo Visualização
+            col1, col2 = st.columns([1, 1.2])
+            with col1:
+                st.markdown(f"<p style='margin:0; font-weight:bold; font-size:15px; color:#1D1D1F;'>{p.descricao}</p>", unsafe_allow_html=True)
+                cor = "#34C759" if p.tipo == "Receita" else "#FF3B30"
+                st.markdown(f"<p style='margin:0; font-size:14px; font-weight:600; color:{cor};'>R$ {p.valor_previsto:,.2f} <span style='font-size:11px; font-weight:400; color:#86868B;'>({p.tipo})</span></p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='margin-top:5px; font-size:12px; color:#86868B;'>Vencimento: <b>{p.data_vencimento}</b></p>", unsafe_allow_html=True)
+                
+            with col2:
+                st.markdown("<div style='font-size: 11px; color: #86868B; margin-bottom: 2px;'>Conta de Baixa:</div>", unsafe_allow_html=True)
+                banco_sel = st.selectbox("Confirmar Banco para Baixa", contas_nomes, key=f"banco_pend_{p.id}", label_visibility="collapsed")
+                
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    if st.button("Baixar", key=f"baixar_{p.id}", use_container_width=True, type="primary"):
+                        cta = None
+                        if banco_sel != "Usar Banco Padrão":
+                            cta = db.query(ContaBancaria).filter(ContaBancaria.nome == banco_sel).first()
+                        else:
+                            cat = db.query(CategoriaFinanceira).filter(CategoriaFinanceira.id == p.categoria_id).first()
+                            subcat = db.query(SubcategoriaFinanceira).filter(SubcategoriaFinanceira.id == p.subcategoria_id).first() if p.subcategoria_id else None
+                            bp_id = subcat.banco_padrao_id if subcat and subcat.banco_padrao_id else (cat.banco_padrao_id if cat else None)
+                            
+                            if bp_id:
+                                cta = db.query(ContaBancaria).filter(ContaBancaria.id == bp_id).first()
+                            else:
+                                cta = db.query(ContaBancaria).filter(ContaBancaria.id == p.conta_id).first() # Fallback
+                        
+                        if cta:
+                            p.status = "Pago"
+                            from datetime import datetime
+                            p.data_pagamento = datetime.now().strftime('%Y-%m-%d')
+                            p.valor = p.valor_previsto
+                            p.conta_id = cta.id
+                            
+                            if p.tipo == "Receita":
+                                cta.saldo_atual += p.valor
+                            else:
+                                cta.saldo_atual -= p.valor
+                            db.commit()
+                            st.rerun()
+                        else:
+                            st.error("Banco não encontrado.")
+                with c2:
+                    if st.button("Editar", key=f"ed_{p.id}", use_container_width=True):
+                        st.session_state[edit_key] = True
+                        st.rerun()
+                with c3:
+                    if st.button("Excluir", key=f"excluir_pend_{p.id}", use_container_width=True):
+                        db.delete(p)
+                        db.commit()
+                        st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
 @dialog_decorator("Nova Transferência Interna")
