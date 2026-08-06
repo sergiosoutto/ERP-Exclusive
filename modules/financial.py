@@ -374,6 +374,7 @@ def render_financial():
     st.markdown("""
     <style>
     div.stRadio > div[role='radiogroup'] { flex-direction: row; flex-wrap: wrap; gap: 10px; }
+    div[data-testid="column"] > div { height: 100%; }
     .kpi-card {
         background-color: #FFFFFF;
         border: 1px solid #E5E5EA;
@@ -410,6 +411,21 @@ def render_financial():
         font-size: 13px;
         font-weight: 600;
     }
+    .toolbar-btn {
+        background: transparent;
+        border: 1px solid #E5E5EA;
+        border-radius: 8px;
+        padding: 6px 12px;
+        color: #1D1D1F;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-decoration: none;
+    }
+    .toolbar-btn:hover { background: #F5F5F7; }
     </style>
     """, unsafe_allow_html=True)
     
@@ -436,34 +452,65 @@ def render_financial():
     ])
     
     with tab1:
-        col_title, col_btn = st.columns([4, 1])
-        with col_title:
-            st.markdown(f"<h3 style='margin-top:0;'>{gold_icon('bar-chart-line')} Fluxo de Caixa Mensal</h3>", unsafe_allow_html=True)
-        with col_btn:
+        db = next(get_db())
+        
+        # Lógica de Notificações
+        from datetime import timedelta
+        hoje = datetime.now().strftime('%Y-%m-%d')
+        amanha = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+        todos_pendentes = db.query(LancamentoFinanceiro).filter(LancamentoFinanceiro.status == "Pendente").all()
+        vence_hoje = len([l for l in todos_pendentes if l.data_vencimento == hoje])
+        vence_amanha = len([l for l in todos_pendentes if l.data_vencimento == amanha])
+        atrasadas = len([l for l in todos_pendentes if l.data_vencimento < hoje])
+        notif_total = vence_hoje + vence_amanha + atrasadas
+        
+        # Toolbar
+        col_t1, col_t2, col_t3, col_t4, col_t5 = st.columns([2, 1, 1, 1.5, 2])
+        with col_t1:
+            st.markdown(f"<h3 style='margin-top:0;'>{gold_icon('chart')} Fluxo de Caixa Mensal</h3>", unsafe_allow_html=True)
+        with col_t2:
+            if st.button("🔄 Refresh", use_container_width=True):
+                st.rerun()
+        with col_t3:
+            if st.button("💾 Backup", use_container_width=True):
+                st.toast("Backup iniciado... (a ser implementado)", icon="💾")
+        with col_t4:
+            with st.popover(f"🔔 Notificações ({notif_total})", use_container_width=True):
+                if notif_total == 0:
+                    st.write("Tudo em dia!")
+                if atrasadas > 0:
+                    st.error(f"{atrasadas} despesa(s) atrasada(s)!")
+                if vence_hoje > 0:
+                    st.warning(f"{vence_hoje} despesa(s) vencendo hoje!")
+                if vence_amanha > 0:
+                    st.info(f"{vence_amanha} despesa(s) vencendo amanhã!")
+        with col_t5:
             if st.button("Lançar +", type="primary", use_container_width=True):
                 dialog_novo_lancamento()
                 
-        db = next(get_db())
+        # Última vez salvo
+        st.markdown(f"<p style='text-align:right; font-size:11px; color:#86868B; margin-top:-10px;'>Última vez atualizado: {datetime.now().strftime('%d/%m %H:%M')}</p>", unsafe_allow_html=True)
+                
         lancamentos = db.query(LancamentoFinanceiro).filter(LancamentoFinanceiro.data_vencimento.startswith(mes_filtro)).all()
         
         receita_prevista = sum(l.valor_previsto for l in lancamentos if l.tipo == "Receita")
         receita_real = sum(l.valor for l in lancamentos if l.tipo == "Receita" and l.status == "Pago")
-        receitas_pendentes = sum(l.valor for l in lancamentos if l.tipo == "Receita" and l.status == "Pendente")
+        receitas_pendentes = sum(l.valor_previsto for l in lancamentos if l.tipo == "Receita" and l.status == "Pendente")
         
         despesa_prevista = sum(l.valor_previsto for l in lancamentos if l.tipo == "Despesa")
         despesa_real = sum(l.valor for l in lancamentos if l.tipo == "Despesa" and l.status == "Pago")
-        despesas_pendentes = sum(l.valor for l in lancamentos if l.tipo == "Despesa" and l.status == "Pendente")
+        despesas_pendentes = sum(l.valor_previsto for l in lancamentos if l.tipo == "Despesa" and l.status == "Pendente")
         
         saldo_contas = sum(c.saldo_atual for c in db.query(ContaBancaria).all())
         saldo_previsto_final = saldo_contas + receitas_pendentes - despesas_pendentes
         cor_saldo_final = "#34C759" if saldo_previsto_final >= 0 else "#FF3B30"
         
         st.markdown(f"""
-        <div class="kpi-card" style="border-left: 4px solid #5E5CE6; margin-bottom: 20px;">
-            <p style="font-size: 11px; font-weight: bold; color: #86868B; margin-bottom: 5px;">{gold_icon('check2-circle')} SALDO PREVISTO CONSIDERANDO TODAS AS DESPESAS E RECEITAS PENDENTES</p>
+        <div class="kpi-card" style="border-left: 4px solid #5E5CE6; margin-bottom: 20px; padding: 12px 20px;">
+            <p style="font-size: 11px; font-weight: bold; color: #86868B; margin-bottom: 5px;">{gold_icon('check')} SALDO PREVISTO (CONSIDERANDO PENDÊNCIAS DO MÊS)</p>
             <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                <p style="font-size: 12px; color: #86868B; margin: 0;">Fórmula: Saldo Atual (R$ {saldo_contas:,.2f}) + Receitas Pendentes (R$ {receitas_pendentes:,.2f}) - Despesas Pendentes (R$ {despesas_pendentes:,.2f})</p>
-                <h2 style="margin: 0; color: {cor_saldo_final}; font-size: 32px;">R$ {saldo_previsto_final:,.2f}</h2>
+                <p style="font-size: 12px; color: #86868B; margin: 0;">Fórmula: Saldo Atual (R$ {saldo_contas:,.2f}) + Receitas (R$ {receitas_pendentes:,.2f}) - Despesas (R$ {despesas_pendentes:,.2f})</p>
+                <h2 style="margin: 0; color: {cor_saldo_final}; font-size: 28px;">R$ {saldo_previsto_final:,.2f}</h2>
             </div>
         </div>
         """, unsafe_allow_html=True)
