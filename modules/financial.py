@@ -256,118 +256,6 @@ def dialog_pendentes():
                         db.commit()
                         st.toast("Lançamento excluído!", icon="✅")
 
-@dialog_decorator("Nova Transferência Interna")
-def dialog_transferencia():
-    db = next(get_db())
-    contas = db.query(ContaBancaria).all()
-    contas_nomes = [c.nome for c in contas]
-    
-    origem = st.selectbox("Conta de Origem (-)", contas_nomes, key="transf_origem")
-    destino = st.selectbox("Conta Destino (+)", contas_nomes, key="transf_destino")
-    valor = st.number_input("Valor da Transferência (R$)", min_value=0.01, format="%.2f")
-    
-    if st.button("Realizar Transferência", type="primary", use_container_width=True):
-        if origem and destino and origem != destino:
-            c_origem = db.query(ContaBancaria).filter(ContaBancaria.nome == origem).first()
-            c_destino = db.query(ContaBancaria).filter(ContaBancaria.nome == destino).first()
-            if c_origem.saldo_atual >= valor:
-                c_origem.saldo_atual -= valor
-                c_destino.saldo_atual += valor
-                db.commit()
-                st.toast("Transferência realizada com sucesso!", icon="✅")
-            else:
-                st.error("Saldo insuficiente na conta de origem.")
-        else:
-            st.error("Selecione contas diferentes e válidas.")
-
-@dialog_decorator("Gerenciar Conta")
-def dialog_gerenciar_conta(conta_id):
-    db = next(get_db())
-    c = db.query(ContaBancaria).filter(ContaBancaria.id == conta_id).first()
-    if not c: return
-    
-    novo_nome = st.text_input("Nome da Conta", c.nome)
-    novo_saldo = st.number_input("Saldo Atual (Ajuste Manual)", value=c.saldo_atual, format="%.2f")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Atualizar Conta", type="primary", use_container_width=True):
-            c.nome = novo_nome
-            c.saldo_atual = novo_saldo
-            db.commit()
-            st.toast("Conta atualizada!", icon="✅")
-    with col2:
-        if st.button("Excluir Conta", use_container_width=True):
-            db.delete(c)
-            db.commit()
-            st.toast("Conta excluída!", icon="✅")
-
-@dialog_decorator("Nova Conta Bancária")
-def dialog_nova_conta():
-    db = next(get_db())
-    nome = st.text_input("Nome da Conta", placeholder="Ex: Conta BB, Caixa Físico...")
-    saldo = st.number_input("Saldo Inicial (R$)", value=0.0, format="%.2f")
-    if st.button("Criar Conta", type="primary", use_container_width=True):
-        if nome:
-            nc = ContaBancaria(nome=nome, saldo_atual=saldo)
-            db.add(nc)
-            db.commit()
-            st.toast("Conta criada!", icon="✅")
-
-@dialog_decorator("Nova Categoria")
-def dialog_nova_categoria():
-    db = next(get_db())
-    tipo = st.radio("Tipo", ["Receita", "Despesa"], horizontal=True)
-    nome = st.text_input("Nome da Categoria")
-    
-    contas = db.query(ContaBancaria).all()
-    contas_nomes = ["Nenhum (Opcional)"] + [c.nome for c in contas]
-    banco_sel = st.selectbox("Banco Padrão para Baixa", contas_nomes)
-    
-    if st.button("Salvar Categoria", type="primary", use_container_width=True):
-        if nome:
-            banco_id = None
-            if banco_sel != "Nenhum (Opcional)":
-                banco = db.query(ContaBancaria).filter(ContaBancaria.nome == banco_sel).first()
-                if banco:
-                    banco_id = banco.id
-            nova_cat = CategoriaFinanceira(nome=nome, tipo=tipo, banco_padrao_id=banco_id)
-            db.add(nova_cat)
-            try:
-                db.commit()
-                st.toast("Categoria criada com sucesso!", icon="✅")
-            except Exception:
-                db.rollback()
-                st.error("Erro: Já existe uma categoria com este nome.")
-        else:
-            st.error("O nome da categoria é obrigatório.")
-
-@dialog_decorator("Nova Subcategoria")
-def dialog_nova_subcategoria():
-    db = next(get_db())
-    categorias = db.query(CategoriaFinanceira).all()
-    cat_nomes = [c.nome for c in categorias]
-    cat_sel = st.selectbox("Categoria Pai", options=cat_nomes if cat_nomes else ["Nenhuma"])
-    nome = st.text_input("Nome da Subcategoria")
-    
-    contas = db.query(ContaBancaria).all()
-    contas_nomes = ["Nenhum"] + [c.nome for c in contas]
-    banco_padrao = st.selectbox("Banco Padrão para Baixa (Opcional)", contas_nomes)
-    
-    if st.button("Salvar Subcategoria", type="primary", use_container_width=True):
-        if nome and cat_sel != "Nenhuma":
-            cat = db.query(CategoriaFinanceira).filter(CategoriaFinanceira.nome == cat_sel).first()
-            if cat:
-                bp_id = None
-                if banco_padrao != "Nenhum":
-                    banco = db.query(ContaBancaria).filter(ContaBancaria.nome == banco_padrao).first()
-                    if banco: bp_id = banco.id
-                    
-                n_sub = SubcategoriaFinanceira(nome=nome, categoria_id=cat.id, banco_padrao_id=bp_id)
-                db.add(n_sub)
-                db.commit()
-                st.toast("Subcategoria criada!", icon="✅")
-
 def render_financial():
     st.markdown(f"<h2 style='margin-top:0;'>{gold_icon('wallet2')} Gestão Financeira</h2>", unsafe_allow_html=True)
     
@@ -444,214 +332,138 @@ def render_financial():
     
     st.markdown("---")
     
-    tab1, tab2, tab3, tab4 = st.tabs([
-        f"Dashboard & Lançamentos", 
-        f"Orçamentos", 
-        f"Bancos", 
-        f"Categorias"
-    ])
     
-    with tab1:
-        db = next(get_db())
-        
-        # Lógica de Notificações
-        from datetime import timedelta
-        hoje = datetime.now().strftime('%Y-%m-%d')
-        amanha = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
-        todos_pendentes = db.query(LancamentoFinanceiro).filter(LancamentoFinanceiro.status == "Pendente").all()
-        vence_hoje = len([l for l in todos_pendentes if l.data_vencimento == hoje])
-        vence_amanha = len([l for l in todos_pendentes if l.data_vencimento == amanha])
-        atrasadas = len([l for l in todos_pendentes if l.data_vencimento < hoje])
-        notif_total = vence_hoje + vence_amanha + atrasadas
-        
-        # Toolbar
-        col_t1, col_t2, col_t3, col_t4, col_t5 = st.columns([2, 1, 1, 1.5, 2])
-        with col_t1:
-            st.markdown(f"<h3 style='margin-top:0;'>{gold_icon('chart')} Fluxo de Caixa Mensal</h3>", unsafe_allow_html=True)
-        with col_t2:
-            if st.button("🔄 Refresh", use_container_width=True):
-                st.rerun()
-        with col_t3:
-            if st.button("💾 Backup", use_container_width=True):
-                st.toast("Backup iniciado... (a ser implementado)", icon="💾")
-        with col_t4:
-            with st.popover(f"🔔 Notificações ({notif_total})", use_container_width=True):
-                if notif_total == 0:
-                    st.write("Tudo em dia!")
-                if atrasadas > 0:
-                    st.error(f"{atrasadas} despesa(s) atrasada(s)!")
-                if vence_hoje > 0:
-                    st.warning(f"{vence_hoje} despesa(s) vencendo hoje!")
-                if vence_amanha > 0:
-                    st.info(f"{vence_amanha} despesa(s) vencendo amanhã!")
-        with col_t5:
-            if st.button("Lançar +", type="primary", use_container_width=True):
-                dialog_novo_lancamento()
-                
-        # Última vez salvo
-        st.markdown(f"<p style='text-align:right; font-size:11px; color:#86868B; margin-top:-10px;'>Última vez atualizado: {datetime.now().strftime('%d/%m %H:%M')}</p>", unsafe_allow_html=True)
-                
-        lancamentos = db.query(LancamentoFinanceiro).filter(LancamentoFinanceiro.data_vencimento.startswith(mes_filtro)).all()
-        
-        receita_prevista = sum(l.valor_previsto for l in lancamentos if l.tipo == "Receita")
-        receita_real = sum(l.valor for l in lancamentos if l.tipo == "Receita" and l.status == "Pago")
-        receitas_pendentes = sum(l.valor_previsto for l in lancamentos if l.tipo == "Receita" and l.status == "Pendente")
-        
-        despesa_prevista = sum(l.valor_previsto for l in lancamentos if l.tipo == "Despesa")
-        despesa_real = sum(l.valor for l in lancamentos if l.tipo == "Despesa" and l.status == "Pago")
-        despesas_pendentes = sum(l.valor_previsto for l in lancamentos if l.tipo == "Despesa" and l.status == "Pendente")
-        
-        saldo_contas = sum(c.saldo_atual for c in db.query(ContaBancaria).all())
-        saldo_previsto_final = saldo_contas + receitas_pendentes - despesas_pendentes
-        cor_saldo_final = "#34C759" if saldo_previsto_final >= 0 else "#FF3B30"
-        
+    db = next(get_db())
+    
+    # Lógica de Notificações
+    from datetime import timedelta
+    hoje = datetime.now().strftime('%Y-%m-%d')
+    amanha = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+    todos_pendentes = db.query(LancamentoFinanceiro).filter(LancamentoFinanceiro.status == "Pendente").all()
+    vence_hoje = len([l for l in todos_pendentes if l.data_vencimento == hoje])
+    vence_amanha = len([l for l in todos_pendentes if l.data_vencimento == amanha])
+    atrasadas = len([l for l in todos_pendentes if l.data_vencimento < hoje])
+    notif_total = vence_hoje + vence_amanha + atrasadas
+    
+    # Toolbar
+    col_t1, col_t2, col_t3, col_t4, col_t5 = st.columns([2, 1, 1, 1.5, 2])
+    with col_t1:
+        st.markdown(f"<h3 style='margin-top:0;'>{gold_icon('chart')} Fluxo de Caixa Mensal</h3>", unsafe_allow_html=True)
+    with col_t2:
+        if st.button("🔄 Refresh", use_container_width=True):
+            st.rerun()
+    with col_t3:
+        if st.button("💾 Backup", use_container_width=True):
+            st.toast("Backup iniciado... (a ser implementado)", icon="💾")
+    with col_t4:
+        with st.popover(f"🔔 Notificações ({notif_total})", use_container_width=True):
+            if notif_total == 0:
+                st.write("Tudo em dia!")
+            if atrasadas > 0:
+                st.error(f"{atrasadas} despesa(s) atrasada(s)!")
+            if vence_hoje > 0:
+                st.warning(f"{vence_hoje} despesa(s) vencendo hoje!")
+            if vence_amanha > 0:
+                st.info(f"{vence_amanha} despesa(s) vencendo amanhã!")
+    with col_t5:
+        if st.button("Lançar +", type="primary", use_container_width=True):
+            dialog_novo_lancamento()
+            
+    # Última vez salvo
+    st.markdown(f"<p style='text-align:right; font-size:11px; color:#86868B; margin-top:-10px;'>Última vez atualizado: {datetime.now().strftime('%d/%m %H:%M')}</p>", unsafe_allow_html=True)
+            
+    lancamentos = db.query(LancamentoFinanceiro).filter(LancamentoFinanceiro.data_vencimento.startswith(mes_filtro)).all()
+    
+    receita_prevista = sum(l.valor_previsto for l in lancamentos if l.tipo == "Receita")
+    receita_real = sum(l.valor for l in lancamentos if l.tipo == "Receita" and l.status == "Pago")
+    receitas_pendentes = sum(l.valor_previsto for l in lancamentos if l.tipo == "Receita" and l.status == "Pendente")
+    
+    despesa_prevista = sum(l.valor_previsto for l in lancamentos if l.tipo == "Despesa")
+    despesa_real = sum(l.valor for l in lancamentos if l.tipo == "Despesa" and l.status == "Pago")
+    despesas_pendentes = sum(l.valor_previsto for l in lancamentos if l.tipo == "Despesa" and l.status == "Pendente")
+    
+    saldo_contas = sum(c.saldo_atual for c in db.query(ContaBancaria).all())
+    saldo_previsto_final = saldo_contas + receitas_pendentes - despesas_pendentes
+    cor_saldo_final = "#34C759" if saldo_previsto_final >= 0 else "#FF3B30"
+    
+    st.markdown(f"""
+    <div class="kpi-card" style="border-left: 4px solid #5E5CE6; margin-bottom: 20px; padding: 12px 20px;">
+        <p style="font-size: 11px; font-weight: bold; color: #86868B; margin-bottom: 5px;">{gold_icon('check')} SALDO PREVISTO (CONSIDERANDO PENDÊNCIAS DO MÊS)</p>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <p style="font-size: 12px; color: #86868B; margin: 0;">Fórmula: Saldo Atual (R$ {saldo_contas:,.2f}) + Receitas (R$ {receitas_pendentes:,.2f}) - Despesas (R$ {despesas_pendentes:,.2f})</p>
+            <h2 style="margin: 0; color: {cor_saldo_final}; font-size: 28px;">R$ {saldo_previsto_final:,.2f}</h2>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    with kpi1:
+        cor_saldo_atual = "#1D1D1F" if saldo_contas >= 0 else "#FF3B30"
         st.markdown(f"""
-        <div class="kpi-card" style="border-left: 4px solid #5E5CE6; margin-bottom: 20px; padding: 12px 20px;">
-            <p style="font-size: 11px; font-weight: bold; color: #86868B; margin-bottom: 5px;">{gold_icon('check')} SALDO PREVISTO (CONSIDERANDO PENDÊNCIAS DO MÊS)</p>
-            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                <p style="font-size: 12px; color: #86868B; margin: 0;">Fórmula: Saldo Atual (R$ {saldo_contas:,.2f}) + Receitas (R$ {receitas_pendentes:,.2f}) - Despesas (R$ {despesas_pendentes:,.2f})</p>
-                <h2 style="margin: 0; color: {cor_saldo_final}; font-size: 28px;">R$ {saldo_previsto_final:,.2f}</h2>
+        <div class="kpi-card">
+            <div class="kpi-title" style="color: #1D1D1F;">{gold_icon('credit-card')} SALDO ATUAL (Bancos)</div>
+            <div class="kpi-value" style="color: {cor_saldo_atual};">R$ {saldo_contas:,.2f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with kpi2:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-title" style="color: #34C759;">{gold_icon('graph-up-arrow')} RECEITAS (MÊS)</div>
+            <div class="kpi-row">
+                <div>
+                    <div class="kpi-subtext">Previsto</div>
+                    <div class="kpi-subval" style="color: #1D1D1F;">R$ {receita_prevista:,.2f}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div class="kpi-subtext">Real</div>
+                    <div class="kpi-subval" style="color: #34C759;">R$ {receita_real:,.2f}</div>
+                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
+    with kpi3:
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-title" style="color: #FF3B30;">{gold_icon('graph-down-arrow')} DESPESAS (MÊS)</div>
+            <div class="kpi-row">
+                <div>
+                    <div class="kpi-subtext">Previsto</div>
+                    <div class="kpi-subval" style="color: #1D1D1F;">R$ {despesa_prevista:,.2f}</div>
+                </div>
+                <div style="text-align:right;">
+                    <div class="kpi-subtext">Real</div>
+                    <div class="kpi-subval" style="color: #FF3B30;">R$ {despesa_real:,.2f}</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    with kpi4:
+        pendentes_qtd = len([l for l in lancamentos if l.status == "Pendente"])
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-title" style="color: #FF9500;">{gold_icon('hourglass-split')} PENDENTES</div>
+            <div class="kpi-value" style="color: #1D1D1F; font-size: 20px;">{pendentes_qtd} lanç.</div>
+            <div class="kpi-row" style="margin-top: 4px;">
+                <div class="kpi-subval" style="color:#34C759;">+ R$ {receitas_pendentes:,.2f}</div>
+                <div class="kpi-subval" style="color:#FF3B30;">- R$ {despesas_pendentes:,.2f}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Gerenciar Pendentes", use_container_width=True):
+            dialog_pendentes()
         
-        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        with kpi1:
-            cor_saldo_atual = "#1D1D1F" if saldo_contas >= 0 else "#FF3B30"
-            st.markdown(f"""
-            <div class="kpi-card">
-                <div class="kpi-title" style="color: #1D1D1F;">{gold_icon('credit-card')} SALDO ATUAL (Bancos)</div>
-                <div class="kpi-value" style="color: {cor_saldo_atual};">R$ {saldo_contas:,.2f}</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with kpi2:
-            st.markdown(f"""
-            <div class="kpi-card">
-                <div class="kpi-title" style="color: #34C759;">{gold_icon('graph-up-arrow')} RECEITAS (MÊS)</div>
-                <div class="kpi-row">
-                    <div>
-                        <div class="kpi-subtext">Previsto</div>
-                        <div class="kpi-subval" style="color: #1D1D1F;">R$ {receita_prevista:,.2f}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div class="kpi-subtext">Real</div>
-                        <div class="kpi-subval" style="color: #34C759;">R$ {receita_real:,.2f}</div>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        with kpi3:
-            st.markdown(f"""
-            <div class="kpi-card">
-                <div class="kpi-title" style="color: #FF3B30;">{gold_icon('graph-down-arrow')} DESPESAS (MÊS)</div>
-                <div class="kpi-row">
-                    <div>
-                        <div class="kpi-subtext">Previsto</div>
-                        <div class="kpi-subval" style="color: #1D1D1F;">R$ {despesa_prevista:,.2f}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div class="kpi-subtext">Real</div>
-                        <div class="kpi-subval" style="color: #FF3B30;">R$ {despesa_real:,.2f}</div>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        with kpi4:
-            pendentes_qtd = len([l for l in lancamentos if l.status == "Pendente"])
-            st.markdown(f"""
-            <div class="kpi-card">
-                <div class="kpi-title" style="color: #FF9500;">{gold_icon('hourglass-split')} PENDENTES</div>
-                <div class="kpi-value" style="color: #1D1D1F; font-size: 20px;">{pendentes_qtd} lanç.</div>
-                <div class="kpi-row" style="margin-top: 4px;">
-                    <div class="kpi-subval" style="color:#34C759;">+ R$ {receitas_pendentes:,.2f}</div>
-                    <div class="kpi-subval" style="color:#FF3B30;">- R$ {despesas_pendentes:,.2f}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            if st.button("Gerenciar Pendentes", use_container_width=True):
-                dialog_pendentes()
-            
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown(f"#### {gold_icon('list-check')} Detalhamento de Lançamentos do Mês", unsafe_allow_html=True)
-        if lancamentos:
-            df = pd.DataFrame([{
-                "Data": l.data_vencimento,
-                "Descrição": l.descricao,
-                "Categoria": db.query(CategoriaFinanceira).filter(CategoriaFinanceira.id == l.categoria_id).first().nome if l.categoria_id else "",
-                "Tipo": l.tipo,
-                "Valor": f"R$ {l.valor:,.2f}",
-                "Status": l.status
-            } for l in lancamentos])
-            st.dataframe(df, use_container_width=True, hide_index=True)
-        else:
-            st.info("Nenhum lançamento encontrado para este mês.")
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown(f"#### {gold_icon('list-check')} Detalhamento de Lançamentos do Mês", unsafe_allow_html=True)
+    if lancamentos:
+        df = pd.DataFrame([{
+            "Data": l.data_vencimento,
+            "Descrição": l.descricao,
+            "Categoria": db.query(CategoriaFinanceira).filter(CategoriaFinanceira.id == l.categoria_id).first().nome if l.categoria_id else "",
+            "Tipo": l.tipo,
+            "Valor": f"R$ {l.valor:,.2f}",
+            "Status": l.status
+        } for l in lancamentos])
+        st.dataframe(df, use_container_width=True, hide_index=True)
+    else:
+        st.info("Nenhum lançamento encontrado para este mês.")
 
-    with tab2:
-        st.markdown(f"### {gold_icon('bullseye')} Orçamentos e Metas", unsafe_allow_html=True)
-        st.write("Defina um teto de gastos para suas categorias.")
-        st.info("Módulo de Orçamentos em desenvolvimento.")
-        
-    with tab3:
-        st.markdown(f"### {gold_icon('bank')} Contas Bancárias", unsafe_allow_html=True)
-        
-        col_b1, col_b2 = st.columns(2)
-        with col_b1:
-            if st.button("Transferência Interna", use_container_width=True, type="primary"):
-                dialog_transferencia()
-        with col_b2:
-            if st.button("+ Criar Conta", use_container_width=True):
-                dialog_nova_conta()
-                
-        st.markdown("---")
-        contas = db.query(ContaBancaria).all()
-        cols = st.columns(3)
-        
-        for i, c in enumerate(contas):
-            with cols[i % 3]:
-                html_card = (
-                    f"<div class='premium-card'>"
-                    f"<div style='display:flex; justify-content: space-between;'>"
-                    f"<h4 style='margin:0;'>{c.nome}</h4>"
-                    f"{gold_icon('bank')}"
-                    f"</div>"
-                    f"<h3 style='color: {'#34C759' if c.saldo_atual >= 0 else '#FF3B30'}; margin-top: 5px;'>R$ {c.saldo_atual:,.2f}</h3>"
-                    f"</div>"
-                )
-                st.markdown(html_card, unsafe_allow_html=True)
-                if st.button("Editar / Excluir", key=f"edit_banco_{c.id}"):
-                    dialog_gerenciar_conta(c.id)
-            
-    with tab4:
-        st.markdown(f"### {gold_icon('tags')} Categorias Financeiras", unsafe_allow_html=True)
-        
-        col_c1, col_c2 = st.columns(2)
-        with col_c1:
-            if st.button("+ Nova Categoria", use_container_width=True):
-                dialog_nova_categoria()
-        with col_c2:
-            if st.button("+ Nova Subcategoria", use_container_width=True):
-                dialog_nova_subcategoria()
-                
-        st.markdown("---")
-        categorias = db.query(CategoriaFinanceira).all()
-        if categorias:
-            for cat in categorias:
-                with st.expander(f"{cat.nome} ({cat.tipo})"):
-                    if st.button(f"Excluir {cat.nome}", key=f"excluir_cat_{cat.id}"):
-                        db.delete(cat)
-                        db.commit()
-                        st.rerun()
-                        
-                    subs = db.query(SubcategoriaFinanceira).filter(SubcategoriaFinanceira.categoria_id == cat.id).all()
-                    if subs:
-                        for s in subs:
-                            col_s1, col_s2 = st.columns([3, 1])
-                            with col_s1:
-                                st.write(f"- {s.nome}")
-                            with col_s2:
-                                if st.button("Excluir", key=f"excluir_sub_{s.id}", help="Excluir subcategoria"):
-                                    db.delete(s)
-                                    db.commit()
-                                    st.rerun()
-                    else:
-                        st.write("Sem subcategorias.")

@@ -166,7 +166,7 @@ def main():
             "Estoque Fracionado",
             "Gestão de Pessoal",
             "CRM & Fidelidade",
-            "Cadastros Base",
+            "Cadastros",
             "Integração Fiscal",
             "Importar / Exportar",
             "Central Analítica"
@@ -217,6 +217,10 @@ def main():
     elif selected == "Gestão Financeira":
         from modules.financial import render_financial
         render_financial()
+
+    elif selected == "Cadastros":
+        from modules.cadastros import render_cadastros
+        render_cadastros()
         
     else:
         st.title(selected)

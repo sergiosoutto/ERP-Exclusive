@@ -103,6 +103,14 @@ class ItemAtendimento(Base):
     referencia_id = Column(Integer) 
     valor_cobrado = Column(Float, default=0.0)
 
+class Colaborador(Base):
+    __tablename__ = "colaboradores"
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, index=True)
+    cargo = Column(String)
+    telefone = Column(String)
+    ativo = Column(Boolean, default=True)
+
 
 def init_db():
     if not os.path.exists("data"):
