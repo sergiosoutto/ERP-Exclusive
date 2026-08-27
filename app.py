@@ -358,8 +358,6 @@ def main():
             st.session_state['user_role'] = None
             st.rerun()
 
-    st.error("🚨 TESTE DE SINCRONIZAÇÃO: SE VOCÊ ESTÁ VENDO ESTA MENSAGEM, O GITHUB ATUALIZOU!")
-
     # Injeta CSS dinâmico para centralizar apenas se for Fluxo do Dia
     if selected == "Fluxo do dia":
         st.markdown("""
