@@ -296,7 +296,7 @@ def render_fast_launch():
     # Hack JS para injetar as badges vermelhas DIRETAMENTE nas abas nativas do Streamlit!
     st.components.v1.html(f"""
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function() {{
             const root = window.parent.document;
             setTimeout(() => {{
                 const tabs = root.querySelectorAll('button[data-baseweb="tab"] p');
@@ -309,7 +309,7 @@ def render_fast_launch():
                     }}
                 }}
             }}, 500);
-        });
+        }});
     </script>
     """, height=0)
     
