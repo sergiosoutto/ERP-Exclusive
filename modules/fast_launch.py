@@ -254,7 +254,7 @@ def render_fast_launch():
                 flex: 1 1 0px !important;
                 padding: 0 4px !important; 
                 min-height: 35px !important;
-                border-radius: 20px !important;
+                border-radius: 8px !important; /* Estética um pouco menos arredondada para remeter a botão */
                 font-size: 11px !important;
                 font-weight: 500 !important;
                 background-color: white !important;
@@ -262,10 +262,20 @@ def render_fast_launch():
                 color: #4a5568 !important;
                 white-space: nowrap !important;
             }
-            div[data-testid="stPills"] button[data-testid="stPillActive"] {
+            
+            /* Fazer a primeira pílula (Concluir) ficar dourada por padrão */
+            div[data-testid="stPills"] > div > button:nth-child(1) {
                 background-color: #C5A059 !important;
                 color: white !important;
                 border-color: #C5A059 !important;
+            }
+            div[data-testid="stPills"] > div > button:nth-child(1):hover {
+                background-color: #D4B06A !important;
+            }
+            
+            /* Pílula ativa (genérica caso clique em outra) */
+            div[data-testid="stPills"] button[data-testid="stPillActive"] {
+                opacity: 0.8 !important;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -391,13 +401,13 @@ def render_fast_launch():
                     st.markdown(f"<p style='margin:2px 0 6px 0; font-size:12px;'>{gold_icon('clock')} {dt_criacao.strftime('%H:%M')} (<b>{tempo_decorrido}</b>) &nbsp;|&nbsp; <b>R$ {at.valor_total:.2f}</b></p>", unsafe_allow_html=True)
                     
                     # Ações da OS usando a Lógica Exata do seu outro app (Pills)
-                    action = st.pills("Ações", ["✏️ Editar", "🗑️ Excluir", "✅ Concluir"], label_visibility="collapsed", key=f"act_os_{at.id}")
-                    if action == "✏️ Editar":
-                        dialog_editar_os(at.id)
-                    elif action == "🗑️ Excluir":
-                        dialog_excluir_os(at.id)
-                    elif action == "✅ Concluir":
+                    action = st.pills("Ações", ["Concluir", "Editar", "Excluir"], label_visibility="collapsed", key=f"act_os_{at.id}")
+                    if action == "Concluir":
                         dialog_checkout(at.id)
+                    elif action == "Editar":
+                        dialog_editar_os(at.id)
+                    elif action == "Excluir":
+                        dialog_excluir_os(at.id)
         else:
             st.info("Pátio vazio.")
 
