@@ -487,6 +487,9 @@ def render_fast_launch():
             itens_hoje = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id.in_(ids_hoje), ItemAtendimento.tipo == "Serviço").all()
             
             for a in total_dia:
+                if not a.data_criacao or not a.data_conclusao:
+                    continue
+                    
                 dt_cria = datetime.fromisoformat(a.data_criacao)
                 dt_fim = datetime.fromisoformat(a.data_conclusao)
                 delta = (dt_fim - dt_cria).total_seconds() / 60.0 # minutos
@@ -499,8 +502,6 @@ def render_fast_launch():
                         servicos_count[s.nome] = servicos_count.get(s.nome, 0) + 1
                         if s.nome not in tempos_servicos:
                             tempos_servicos[s.nome] = []
-                        # Se houver multiplos servicos na mesma OS, o tempo eh dividido? 
-                        # Simplificacao: o tempo total da OS eh o tempo daquele servico (ja que nao tem inicio/fim granular)
                         tempos_servicos[s.nome].append(delta)
                     
         if servicos_count:
