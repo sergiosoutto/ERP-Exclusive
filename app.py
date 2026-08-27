@@ -61,13 +61,10 @@ def inject_custom_css():
             color: rgba(255, 255, 255, 0.9) !important;
         }
         /* Forçar Logo Menor no Mobile e Desktop */
-        [data-testid="stSidebar"] [data-testid="stImage"] {
-            display: flex !important;
-            justify-content: center !important;
-        }
-        [data-testid="stSidebar"] [data-testid="stImage"] img {
+        [data-testid="stSidebar"] img {
             max-width: 150px !important;
-            width: 100% !important;
+            margin: 0 auto !important;
+            display: block !important;
         }
 
         /* Consertar contraste do Filtro de Data na Sidebar - Força bruta */
@@ -78,9 +75,10 @@ def inject_custom_css():
             border-color: rgba(255,255,255,0.2) !important;
         }
         
-        /* Remover bordas de iframes (como o option_menu) E APLICAR BORDA NA CAIXA DO MENU */
-        iframe {
-            border: none !important;
+        /* Borda na caixa do menu (Iframe) */
+        [data-testid="stSidebar"] iframe {
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            border-radius: 8px !important;
             outline: none !important;
         }
 
@@ -211,7 +209,7 @@ def inject_custom_css():
 
 inject_custom_css()
 
-# Hack JS DEFINITIVO para recolhimento da sidebar com múltiplos gatilhos
+# Hack JS DEFINITIVO para recolhimento da sidebar com múltiplos gatilhos e via Python Rerun
 st.components.v1.html("""
 <script>
     document.addEventListener("DOMContentLoaded", function() {
@@ -224,6 +222,9 @@ st.components.v1.html("""
             }
         }
 
+        // Se o iframe carregar e houver a flag, fecha (acionado pelo rerun do Python)
+        closeSidebar();
+
         // Gatilho 1: Mensagens do Streamlit Component (option_menu)
         root.addEventListener('message', function(e) {
             if (e.data && e.data.type === 'streamlit:setComponentValue') {
@@ -232,7 +233,7 @@ st.components.v1.html("""
         });
 
         // Gatilho 2: Monitoramento de clique dentro de qualquer Iframe
-        let monitor = setInterval(function() {
+        setInterval(function() {
             const active = root.document.activeElement;
             if (active && active.tagName === 'IFRAME') {
                 closeSidebar();

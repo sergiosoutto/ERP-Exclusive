@@ -245,8 +245,10 @@ def render_fast_launch():
             
             /* Forçar botões inline (lado a lado) dentro do card */
             div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] {
+                flex-direction: row !important; /* Vence o @media query do mobile */
                 flex-wrap: nowrap !important;
                 gap: 4px !important;
+                display: flex !important;
             }
             div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] {
                 min-width: 0 !important;
@@ -259,8 +261,8 @@ def render_fast_launch():
                 padding: 2px 4px !important;
                 font-size: 11px !important;
                 border-radius: 12px !important;
-                min-height: 24px !important;
-                height: 24px !important;
+                min-height: 28px !important;
+                height: 28px !important;
                 line-height: 1 !important;
             }
             
@@ -273,6 +275,7 @@ def render_fast_launch():
                 border-radius: 12px;
                 padding: 2px 6px;
                 margin-left: 6px;
+                display: inline-block;
                 vertical-align: middle;
                 box-shadow: 0 2px 4px rgba(255, 59, 48, 0.3);
             }
@@ -301,13 +304,15 @@ def render_fast_launch():
         document.addEventListener("DOMContentLoaded", function() {{
             const root = window.parent.document;
             setInterval(() => {{
-                const tabs = root.querySelectorAll('button[data-baseweb="tab"] p');
+                const tabs = root.querySelectorAll('button[data-baseweb="tab"]');
                 if(tabs.length >= 3) {{
+                    // Aba Pátio (Índice 1)
                     if(!tabs[1].innerHTML.includes('red-badge')) {{
-                        tabs[1].innerHTML = `Pátio <span class="red-badge">{qtd_andamento}</span>`;
+                        tabs[1].innerHTML = `<div style="display:flex; align-items:center; gap:4px;">Pátio <span class="red-badge">{qtd_andamento}</span></div>`;
                     }}
+                    // Aba Histórico (Índice 2)
                     if(!tabs[2].innerHTML.includes('red-badge')) {{
-                        tabs[2].innerHTML = `Histórico <span class="red-badge">{qtd_concluido}</span>`;
+                        tabs[2].innerHTML = `<div style="display:flex; align-items:center; gap:4px;">Histórico <span class="red-badge">{qtd_concluido}</span></div>`;
                     }}
                 }}
             }}, 500);
