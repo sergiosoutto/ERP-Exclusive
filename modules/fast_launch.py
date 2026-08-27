@@ -253,16 +253,17 @@ def render_fast_launch():
             }
             
             /* CSS GRID IGUAL AO DO SEU OUTRO APP PARA MANTER BOTÕES LADO A LADO NO MOBILE */
-            @media (max-width: 576px) {
-                div[data-testid="stVerticalBlockBorderWrapper"] > div > div[data-testid="stHorizontalBlock"] {
+            @media (max-width: 900px) {
+                div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] {
                     display: grid !important;
                     grid-template-columns: 1fr 1fr 1fr !important;
                     gap: 5px !important;
                 }
-                div[data-testid="stVerticalBlockBorderWrapper"] > div > div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+                div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] div[data-testid="column"] {
                     width: 100% !important;
                     flex: none !important;
                     min-width: 0 !important;
+                    display: block !important;
                 }
             }
         </style>
