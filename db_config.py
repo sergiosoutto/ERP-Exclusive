@@ -1,4 +1,5 @@
 import os
+import hashlib
 from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, Date, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -15,10 +16,25 @@ Base = declarative_base()
 # Exemplo de Modelos Base (Hardcoded Rules)
 # ==========================================
 
+class Usuario(Base):
+    __tablename__ = "usuarios"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    password_hash = Column(String)
+    role = Column(String, default="admin") # admin, basico
+    permissoes = Column(String, default="todas")
+
+class FormaPagamento(Base):
+    __tablename__ = "formas_pagamento"
+    id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String, unique=True, index=True)
+    taxa_juros_vista = Column(Float, default=0.0)
+    taxa_juros_parcela = Column(Float, default=0.0)
+
 class ContaBancaria(Base):
     __tablename__ = "contas_bancarias"
     id = Column(Integer, primary_key=True, index=True)
-    nome = Column(String, unique=True, index=True) # "Banco 1 (B2B)", "Banco 2 (Varejo B2C)", "Banco 3 (Reserva PIX)", "Maquininha"
+    nome = Column(String, unique=True, index=True) 
     saldo_atual = Column(Float, default=0.0)
 
 class CategoriaFinanceira(Base):
@@ -64,8 +80,16 @@ class Produto(Base):
     nome = Column(String, index=True)
     unidade_medida = Column(String) # ml, g, un
     quantidade_estoque = Column(Float, default=0.0)
-    preco_venda = Column(Float, default=0.0)
+    preco_venda = Column(Float, default=0.0) # Legacy
+    custo_unidade = Column(Float, default=0.0) 
     produto_monofasico = Column(Boolean, default=False) 
+
+class ServicoInsumo(Base):
+    __tablename__ = "servicos_insumos"
+    id = Column(Integer, primary_key=True, index=True)
+    servico_id = Column(Integer, ForeignKey("servicos.id"))
+    produto_id = Column(Integer, ForeignKey("produtos.id"))
+    quantidade_utilizada = Column(Float, default=0.0)
 
 class Cliente(Base):
     __tablename__ = "clientes"
@@ -81,6 +105,11 @@ class Servico(Base):
     id = Column(Integer, primary_key=True, index=True)
     nome = Column(String, index=True)
     preco_padrao = Column(Float, default=0.0)
+    custo_agua = Column(Float, default=0.0)
+    custo_luz = Column(Float, default=0.0)
+    custo_fixo = Column(Float, default=0.0)
+    custo_total = Column(Float, default=0.0)
+    margem_lucro = Column(Float, default=0.0)
 
 class Atendimento(Base):
     __tablename__ = "atendimentos"
@@ -94,12 +123,13 @@ class Atendimento(Base):
     data_criacao = Column(String)
     data_conclusao = Column(String)
     observacoes = Column(String)
+    parcelas = Column(Integer, default=1)
 
 class ItemAtendimento(Base):
     __tablename__ = "itens_atendimento"
     id = Column(Integer, primary_key=True, index=True)
     atendimento_id = Column(Integer, ForeignKey("atendimentos.id"))
-    tipo = Column(String) # "Serviço" ou "Produto"
+    tipo = Column(String) # "Serviço"
     referencia_id = Column(Integer) 
     valor_cobrado = Column(Float, default=0.0)
 
@@ -205,7 +235,7 @@ def init_db():
         except Exception:
             db.rollback()
 
-    # 8. Migração para 'banco_padrao_id' em 'categorias_financeiras' e 'subcategorias_financeiras'
+    # 8. Migração para 'banco_padrao_id' em 'categorias_financeiras'
     try:
         db.execute(text("SELECT banco_padrao_id FROM categorias_financeiras LIMIT 1"))
     except Exception:
@@ -213,6 +243,44 @@ def init_db():
             db.rollback()
             db.execute(text("ALTER TABLE categorias_financeiras ADD COLUMN banco_padrao_id INTEGER"))
             db.execute(text("ALTER TABLE subcategorias_financeiras ADD COLUMN banco_padrao_id INTEGER"))
+            db.commit()
+        except Exception:
+            db.rollback()
+            
+    # 9. Migração Serviços (Novos Custos)
+    try:
+        db.execute(text("SELECT custo_agua FROM servicos LIMIT 1"))
+    except Exception:
+        try:
+            db.rollback()
+            db.execute(text("ALTER TABLE servicos ADD COLUMN custo_agua FLOAT DEFAULT 0.0"))
+            db.execute(text("ALTER TABLE servicos ADD COLUMN custo_luz FLOAT DEFAULT 0.0"))
+            db.execute(text("ALTER TABLE servicos ADD COLUMN custo_fixo FLOAT DEFAULT 0.0"))
+            db.execute(text("ALTER TABLE servicos ADD COLUMN custo_total FLOAT DEFAULT 0.0"))
+            db.execute(text("ALTER TABLE servicos ADD COLUMN margem_lucro FLOAT DEFAULT 0.0"))
+            db.commit()
+        except Exception:
+            db.rollback()
+
+    # 10. Migração Produtos (Custo)
+    try:
+        db.execute(text("SELECT custo_unidade FROM produtos LIMIT 1"))
+    except Exception:
+        try:
+            db.rollback()
+            db.execute(text("ALTER TABLE produtos ADD COLUMN custo_unidade FLOAT DEFAULT 0.0"))
+            db.execute(text("UPDATE produtos SET custo_unidade = preco_venda"))
+            db.commit()
+        except Exception:
+            db.rollback()
+            
+    # 11. Migração parcelas Atendimento
+    try:
+        db.execute(text("SELECT parcelas FROM atendimentos LIMIT 1"))
+    except Exception:
+        try:
+            db.rollback()
+            db.execute(text("ALTER TABLE atendimentos ADD COLUMN parcelas INTEGER DEFAULT 1"))
             db.commit()
         except Exception:
             db.rollback()
@@ -245,8 +313,28 @@ def init_db():
     db.close()
     seed_db()
 
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
 def seed_db():
     db = SessionLocal()
+    
+    # Criar admin se nao existir
+    if db.query(Usuario).filter(Usuario.username == "admin").first() is None:
+        db.add(Usuario(username="admin", password_hash=hash_password("admin"), role="admin", permissoes="todas"))
+        db.commit()
+        
+    # Formas de pagamento padrao
+    if db.query(FormaPagamento).first() is None:
+        fps = [
+            FormaPagamento(nome="Pix", taxa_juros_vista=0.0, taxa_juros_parcela=0.0),
+            FormaPagamento(nome="Dinheiro", taxa_juros_vista=0.0, taxa_juros_parcela=0.0),
+            FormaPagamento(nome="Cartão Débito", taxa_juros_vista=1.5, taxa_juros_parcela=0.0),
+            FormaPagamento(nome="Cartão Crédito", taxa_juros_vista=3.5, taxa_juros_parcela=1.5)
+        ]
+        db.add_all(fps)
+        db.commit()
+        
     if db.query(Servico).first() is None:
         servicos = [
             Servico(nome="Lavagem Americana", preco_padrao=80.0),
@@ -258,8 +346,8 @@ def seed_db():
         db.add_all(servicos)
         
         produtos = [
-            Produto(nome="Vonixx V-Floc", unidade_medida="ml", quantidade_estoque=1500, preco_venda=45.0, produto_monofasico=True),
-            Produto(nome="Cera de Carnaúba", unidade_medida="g", quantidade_estoque=500, preco_venda=120.0, produto_monofasico=False)
+            Produto(nome="Vonixx V-Floc", unidade_medida="ml", quantidade_estoque=1500, custo_unidade=0.05, preco_venda=45.0, produto_monofasico=True),
+            Produto(nome="Cera de Carnaúba", unidade_medida="g", quantidade_estoque=500, custo_unidade=0.20, preco_venda=120.0, produto_monofasico=False)
         ]
         db.add_all(produtos)
 

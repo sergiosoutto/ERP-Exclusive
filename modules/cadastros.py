@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
-from db_config import get_db, CategoriaFinanceira, SubcategoriaFinanceira, ContaBancaria, Colaborador, Produto, Servico
+from db_config import get_db, CategoriaFinanceira, SubcategoriaFinanceira, ContaBancaria, Colaborador, Produto, Servico, FormaPagamento, Usuario, ServicoInsumo
 from modules.fast_launch import gold_icon, dialog_decorator
+import hashlib
 
 # ==========================================
 # Dialogs de Bancos e Categorias
@@ -119,6 +120,41 @@ def dialog_nova_subcategoria():
                 st.toast("Subcategoria criada!", icon="✅")
 
 # ==========================================
+# Dialogs Formas de Pagamento e Usuários
+# ==========================================
+@dialog_decorator("Nova Forma de Pagamento")
+def dialog_nova_forma_pagamento():
+    db = next(get_db())
+    nome = st.text_input("Nome da Forma de Pagamento")
+    c1, c2 = st.columns(2)
+    with c1:
+        tx_vista = st.number_input("Taxa à Vista (%)", min_value=0.0, format="%.2f")
+    with c2:
+        tx_parcela = st.number_input("Taxa por Parcela (%)", min_value=0.0, format="%.2f")
+    
+    if st.button("Salvar", type="primary", use_container_width=True):
+        if nome:
+            fp = FormaPagamento(nome=nome, taxa_juros_vista=tx_vista, taxa_juros_parcela=tx_parcela)
+            db.add(fp)
+            db.commit()
+            st.rerun()
+
+@dialog_decorator("Novo Usuário")
+def dialog_novo_usuario():
+    db = next(get_db())
+    username = st.text_input("Username")
+    password = st.text_input("Senha", type="password")
+    role = st.selectbox("Nível de Acesso", ["admin", "basico"])
+    
+    if st.button("Criar Usuário", type="primary", use_container_width=True):
+        if username and password:
+            usr = Usuario(username=username, password_hash=hashlib.sha256(password.encode()).hexdigest(), role=role)
+            db.add(usr)
+            db.commit()
+            st.rerun()
+
+
+# ==========================================
 # Dialogs de Colaboradores, Produtos e Serviços
 # ==========================================
 @dialog_decorator("Novo Colaborador")
@@ -136,34 +172,80 @@ def dialog_novo_colaborador():
             st.toast("Colaborador criado!", icon="✅")
             st.rerun()
 
-@dialog_decorator("Novo Produto")
+@dialog_decorator("Novo Insumo (Produto)")
 def dialog_novo_produto():
     db = next(get_db())
-    nome = st.text_input("Nome do Produto")
+    nome = st.text_input("Nome do Insumo")
     unidade = st.text_input("Unidade de Medida (ex: un, ml, g)")
-    preco = st.number_input("Preço de Venda (R$)", min_value=0.0, format="%.2f")
+    custo = st.number_input("Custo por Unidade (R$)", min_value=0.0, format="%.4f")
     estoque = st.number_input("Qtd em Estoque", min_value=0.0, format="%.2f")
     
-    if st.button("Salvar Produto", type="primary", use_container_width=True):
+    if st.button("Salvar Insumo", type="primary", use_container_width=True):
         if nome:
-            np = Produto(nome=nome, unidade_medida=unidade, preco_venda=preco, quantidade_estoque=estoque)
+            np = Produto(nome=nome, unidade_medida=unidade, custo_unidade=custo, quantidade_estoque=estoque)
             db.add(np)
             db.commit()
-            st.toast("Produto criado!", icon="✅")
+            st.toast("Insumo criado!", icon="✅")
             st.rerun()
 
 @dialog_decorator("Novo Serviço")
 def dialog_novo_servico():
     db = next(get_db())
+    st.markdown("### Configuração do Serviço")
     nome = st.text_input("Nome do Serviço")
-    preco = st.number_input("Preço Padrão (R$)", min_value=0.0, format="%.2f")
+    preco_venda = st.number_input("Preço de Venda (R$)", min_value=0.0, format="%.2f")
     
-    if st.button("Salvar Serviço", type="primary", use_container_width=True):
+    st.markdown("---")
+    st.markdown("#### Custos Operacionais")
+    c1, c2, c3 = st.columns(3)
+    with c1: custo_agua = st.number_input("Proporcional Água (R$)", min_value=0.0, format="%.2f")
+    with c2: custo_luz = st.number_input("Proporcional Luz (R$)", min_value=0.0, format="%.2f")
+    with c3: custo_fixo = st.number_input("Custo Fixo Extra (R$)", min_value=0.0, format="%.2f")
+    
+    st.markdown("---")
+    st.markdown("#### Insumos Utilizados")
+    produtos_db = db.query(Produto).all()
+    produtos_dict = {p.id: p for p in produtos_db}
+    produtos_nomes = {p.nome: p.id for p in produtos_db}
+    
+    selecionados = st.multiselect("Selecione os insumos", list(produtos_nomes.keys()))
+    
+    insumos_qtd = {}
+    custo_insumos = 0.0
+    
+    if selecionados:
+        for sel in selecionados:
+            p_id = produtos_nomes[sel]
+            p_obj = produtos_dict[p_id]
+            qtd = st.number_input(f"Qtd. de {sel} ({p_obj.unidade_medida})", min_value=0.0, format="%.4f", key=f"insumo_{p_id}")
+            insumos_qtd[p_id] = qtd
+            custo_insumos += qtd * p_obj.custo_unidade
+            
+    custo_total = custo_agua + custo_luz + custo_fixo + custo_insumos
+    lucro = preco_venda - custo_total
+    margem = (lucro / preco_venda * 100) if preco_venda > 0 else 0.0
+    
+    st.markdown(f"**Custo Total Estimado:** R$ {custo_total:,.2f}")
+    st.markdown(f"**Margem de Lucro Projetada:** {margem:.1f}% (R$ {lucro:,.2f})")
+    
+    if st.button("Salvar Serviço Completo", type="primary", use_container_width=True):
         if nome:
-            ns = Servico(nome=nome, preco_padrao=preco)
+            ns = Servico(
+                nome=nome, preco_padrao=preco_venda, 
+                custo_agua=custo_agua, custo_luz=custo_luz, 
+                custo_fixo=custo_fixo, custo_total=custo_total, 
+                margem_lucro=margem
+            )
             db.add(ns)
+            db.commit() # Commit to get ID
+            
+            for p_id, qtd in insumos_qtd.items():
+                if qtd > 0:
+                    si = ServicoInsumo(servico_id=ns.id, produto_id=p_id, quantidade_utilizada=qtd)
+                    db.add(si)
             db.commit()
-            st.toast("Serviço criado!", icon="✅")
+            
+            st.toast("Serviço configurado!", icon="✅")
             st.rerun()
 
 
@@ -172,29 +254,28 @@ def dialog_novo_servico():
 # ==========================================
 def render_cadastros():
     st.markdown(f"<h2 style='margin-top:0;'>{gold_icon('database-add')} Central de Cadastros</h2>", unsafe_allow_html=True)
-    st.markdown("Gerencie as informações base que alimentam todo o sistema ERP.")
+    st.markdown("Gerencie as configurações financeiras, operacionais e de equipe.")
     
     db = next(get_db())
     
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "Categorias e sub categorias", 
+    t_cat, t_banco, t_colab, t_insumo, t_servico, t_pag, t_usr = st.tabs([
+        "Categorias", 
         "Bancos",
         "Colaboradores",
-        "Produtos",
-        "Serviços"
+        "Insumos",
+        "Serviços",
+        "Formas de Pgto",
+        "Usuários"
     ])
     
     # --- TAB 1: CATEGORIAS ---
-    with tab1:
+    with t_cat:
         st.markdown(f"### {gold_icon('tags')} Categorias Financeiras", unsafe_allow_html=True)
-        
         col_c1, col_c2 = st.columns(2)
         with col_c1:
-            if st.button("+ Nova Categoria", use_container_width=True):
-                dialog_nova_categoria()
+            if st.button("+ Nova Categoria", use_container_width=True): dialog_nova_categoria()
         with col_c2:
-            if st.button("+ Nova Subcategoria", use_container_width=True):
-                dialog_nova_subcategoria()
+            if st.button("+ Nova Subcategoria", use_container_width=True): dialog_nova_subcategoria()
                 
         st.markdown("---")
         categorias = db.query(CategoriaFinanceira).all()
@@ -210,10 +291,9 @@ def render_cadastros():
                     if subs:
                         for s in subs:
                             col_s1, col_s2 = st.columns([3, 1])
-                            with col_s1:
-                                st.write(f"- {s.nome}")
+                            with col_s1: st.write(f"- {s.nome}")
                             with col_s2:
-                                if st.button("Excluir", key=f"excluir_sub_{s.id}", help="Excluir subcategoria"):
+                                if st.button("Excluir", key=f"excluir_sub_{s.id}"):
                                     db.delete(s)
                                     db.commit()
                                     st.rerun()
@@ -221,21 +301,17 @@ def render_cadastros():
                         st.write("Sem subcategorias.")
                         
     # --- TAB 2: BANCOS ---
-    with tab2:
+    with t_banco:
         st.markdown(f"### {gold_icon('bank')} Contas Bancárias", unsafe_allow_html=True)
-        
         col_b1, col_b2 = st.columns(2)
         with col_b1:
-            if st.button("Transferência Interna", use_container_width=True, type="primary"):
-                dialog_transferencia()
+            if st.button("Transferência Interna", use_container_width=True, type="primary"): dialog_transferencia()
         with col_b2:
-            if st.button("+ Criar Conta", use_container_width=True):
-                dialog_nova_conta()
+            if st.button("+ Criar Conta", use_container_width=True): dialog_nova_conta()
                 
         st.markdown("---")
         contas = db.query(ContaBancaria).all()
         cols = st.columns(3)
-        
         for i, c in enumerate(contas):
             with cols[i % 3]:
                 html_card = (
@@ -248,17 +324,14 @@ def render_cadastros():
                     f"</div>"
                 )
                 st.markdown(html_card, unsafe_allow_html=True)
-                if st.button("Editar / Excluir", key=f"edit_banco_{c.id}"):
-                    dialog_gerenciar_conta(c.id)
+                if st.button("Editar / Excluir", key=f"edit_banco_{c.id}"): dialog_gerenciar_conta(c.id)
 
     # --- TAB 3: COLABORADORES ---
-    with tab3:
+    with t_colab:
         col_t1, col_t2 = st.columns([4, 1])
-        with col_t1:
-            st.markdown(f"### {gold_icon('people')} Colaboradores", unsafe_allow_html=True)
+        with col_t1: st.markdown(f"### {gold_icon('people')} Colaboradores", unsafe_allow_html=True)
         with col_t2:
-            if st.button("+ Novo Colaborador", use_container_width=True, type="primary"):
-                dialog_novo_colaborador()
+            if st.button("+ Novo Colaborador", use_container_width=True, type="primary"): dialog_novo_colaborador()
                 
         st.markdown("---")
         colabs = db.query(Colaborador).all()
@@ -266,68 +339,99 @@ def render_cadastros():
             for c in colabs:
                 with st.expander(f"{c.nome} - {c.cargo or 'Sem cargo'}"):
                     c1, c2, c3 = st.columns([2,2,1])
-                    with c1:
-                        st.write(f"**Telefone:** {c.telefone or 'N/I'}")
-                    with c2:
-                        st.write(f"**Status:** {'Ativo' if c.ativo else 'Inativo'}")
+                    with c1: st.write(f"**Telefone:** {c.telefone or 'N/I'}")
+                    with c2: st.write(f"**Status:** {'Ativo' if c.ativo else 'Inativo'}")
                     with c3:
                         if st.button("Excluir", key=f"del_colab_{c.id}", type="primary"):
                             db.delete(c)
                             db.commit()
                             st.rerun()
-        else:
-            st.info("Nenhum colaborador cadastrado.")
 
-    # --- TAB 4: PRODUTOS ---
-    with tab4:
+    # --- TAB 4: INSUMOS ---
+    with t_insumo:
         col_p1, col_p2 = st.columns([4, 1])
-        with col_p1:
-            st.markdown(f"### {gold_icon('box-seam')} Produtos", unsafe_allow_html=True)
+        with col_p1: st.markdown(f"### {gold_icon('box-seam')} Insumos (Estoque)", unsafe_allow_html=True)
         with col_p2:
-            if st.button("+ Novo Produto", use_container_width=True, type="primary"):
-                dialog_novo_produto()
+            if st.button("+ Novo Insumo", use_container_width=True, type="primary"): dialog_novo_produto()
                 
         st.markdown("---")
         produtos = db.query(Produto).all()
         if produtos:
             for p in produtos:
                 with st.expander(f"{p.nome}"):
-                    p1, p2, p3, p4 = st.columns([1,1,1,1])
-                    with p1:
-                        st.write(f"**Preço:** R$ {p.preco_venda:,.2f}")
-                    with p2:
-                        st.write(f"**Estoque:** {p.quantidade_estoque} {p.unidade_medida}")
-                    with p3:
-                        st.write(f"**Monofásico:** {'Sim' if p.produto_monofasico else 'Não'}")
+                    p1, p2, p4 = st.columns([1,1,1])
+                    with p1: st.write(f"**Custo Unitário:** R$ {p.custo_unidade:,.4f}")
+                    with p2: st.write(f"**Estoque:** {p.quantidade_estoque} {p.unidade_medida}")
                     with p4:
                         if st.button("Excluir", key=f"del_prod_{p.id}", type="primary"):
                             db.delete(p)
                             db.commit()
                             st.rerun()
-        else:
-            st.info("Nenhum produto cadastrado.")
 
     # --- TAB 5: SERVIÇOS ---
-    with tab5:
+    with t_servico:
         col_s1, col_s2 = st.columns([4, 1])
-        with col_s1:
-            st.markdown(f"### {gold_icon('check2-circle')} Serviços", unsafe_allow_html=True)
+        with col_s1: st.markdown(f"### {gold_icon('check2-circle')} Serviços de Estética", unsafe_allow_html=True)
         with col_s2:
-            if st.button("+ Novo Serviço", use_container_width=True, type="primary"):
-                dialog_novo_servico()
+            if st.button("+ Novo Serviço", use_container_width=True, type="primary"): dialog_novo_servico()
                 
         st.markdown("---")
         servicos = db.query(Servico).all()
         if servicos:
             for s in servicos:
-                with st.expander(f"{s.nome}"):
+                with st.expander(f"{s.nome} - Venda: R$ {s.preco_padrao:,.2f} | Margem: {s.margem_lucro:.1f}%"):
                     s1, s2 = st.columns([3, 1])
                     with s1:
-                        st.write(f"**Preço Padrão:** R$ {s.preco_padrao:,.2f}")
+                        st.write(f"**Custo Total (Fixos + Insumos):** R$ {s.custo_total:,.2f}")
+                        insumos = db.query(ServicoInsumo).filter(ServicoInsumo.servico_id == s.id).all()
+                        if insumos:
+                            st.write("**Insumos Consumidos por aplicação:**")
+                            for ins in insumos:
+                                p = db.query(Produto).filter(Produto.id == ins.produto_id).first()
+                                st.write(f"- {p.nome}: {ins.quantidade_utilizada} {p.unidade_medida}")
                     with s2:
                         if st.button("Excluir", key=f"del_serv_{s.id}", type="primary"):
                             db.delete(s)
                             db.commit()
                             st.rerun()
-        else:
-            st.info("Nenhum serviço cadastrado.")
+
+    # --- TAB 6: FORMAS DE PAGAMENTO ---
+    with t_pag:
+        col_f1, col_f2 = st.columns([4, 1])
+        with col_f1: st.markdown(f"### {gold_icon('credit-card')} Formas de Pagamento", unsafe_allow_html=True)
+        with col_f2:
+            if st.button("+ Nova Forma", use_container_width=True, type="primary"): dialog_nova_forma_pagamento()
+                
+        st.markdown("---")
+        fps = db.query(FormaPagamento).all()
+        if fps:
+            for f in fps:
+                with st.expander(f"{f.nome}"):
+                    c1, c2, c3 = st.columns([1,1,1])
+                    with c1: st.write(f"**Tx à Vista:** {f.taxa_juros_vista}%")
+                    with c2: st.write(f"**Tx Parcelado:** {f.taxa_juros_parcela}%")
+                    with c3:
+                        if st.button("Excluir", key=f"del_fp_{f.id}", type="primary"):
+                            db.delete(f)
+                            db.commit()
+                            st.rerun()
+
+    # --- TAB 7: USUÁRIOS ---
+    with t_usr:
+        col_u1, col_u2 = st.columns([4, 1])
+        with col_u1: st.markdown(f"### {gold_icon('person-badge')} Gestão de Acessos", unsafe_allow_html=True)
+        with col_u2:
+            if st.button("+ Novo Usuário", use_container_width=True, type="primary"): dialog_novo_usuario()
+                
+        st.markdown("---")
+        usrs = db.query(Usuario).all()
+        if usrs:
+            for u in usrs:
+                with st.expander(f"@{u.username} ({u.role})"):
+                    if u.username == 'admin':
+                        st.info("O usuário admin padrão não pode ser excluído.")
+                    else:
+                        if st.button("Excluir", key=f"del_usr_{u.id}", type="primary"):
+                            db.delete(u)
+                            db.commit()
+                            st.rerun()

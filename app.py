@@ -1,12 +1,13 @@
 import streamlit as st
 from streamlit_option_menu import option_menu
-from db_config import init_db
+from db_config import init_db, get_db, Usuario
+import hashlib
 
 # ==========================================
 # 1. Configuração Inicial da Página
 # ==========================================
 st.set_page_config(
-    page_title="ERP Premium | Estética Automotiva",
+    page_title="Crivo | Car Studio",
     page_icon="🚘",
     layout="wide",
     initial_sidebar_state="auto"
@@ -167,28 +168,79 @@ def inject_custom_css():
 
 inject_custom_css()
 
+# Auto recolher menu lateral após clique JS script
+st.markdown("""
+<script>
+    const navLinks = window.parent.document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            const sidebar = window.parent.document.querySelector('[data-testid="stSidebar"]');
+            if(sidebar && window.innerWidth < 992) {
+                const closeBtn = window.parent.document.querySelector('[data-testid="baseButton-header"]');
+                if(closeBtn) closeBtn.click();
+            }
+        });
+    });
+</script>
+""", unsafe_allow_html=True)
+
 # ==========================================
 # 3. Gestão de Estado da Sessão (SPA Feeling)
 # ==========================================
-if 'user_role' not in st.session_state:
-    st.session_state['user_role'] = 'Admin' # Temporário para desenvolvimento
 if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = True # Bypass temporário
+    st.session_state['logged_in'] = False
+if 'user_role' not in st.session_state:
+    st.session_state['user_role'] = None
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def render_login():
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
+        try:
+            st.image("assets/logo.png", use_container_width=True)
+        except:
+            st.markdown(f"<h1 style='text-align: center;'>CRIVO <br><span style='font-size:16px; color:var(--accent);'>CAR STUDIO</span></h1>", unsafe_allow_html=True)
+            
+        st.markdown("<div class='premium-card'>", unsafe_allow_html=True)
+        username = st.text_input("Usuário")
+        password = st.text_input("Senha", type="password")
+        
+        if st.button("Entrar", type="primary", use_container_width=True):
+            db = next(get_db())
+            user = db.query(Usuario).filter(Usuario.username == username).first()
+            if user and user.password_hash == hash_password(password):
+                st.session_state['logged_in'] = True
+                st.session_state['user_role'] = user.role
+                st.rerun()
+            else:
+                st.error("Usuário ou senha inválidos.")
+        st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
 # 4. Estrutura Principal e Menu Lateral
 # ==========================================
 def main():
     if not st.session_state['logged_in']:
-        st.title("Login Seguro")
-        st.write("Módulo de Controle de Acesso (RBAC) em desenvolvimento...")
+        render_login()
         return
 
     # Sidebar
     with st.sidebar:
-        gold_car_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:8px;"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><circle cx="17" cy="17" r="2"></circle><path d="M13 17H9"></path></svg>'
-        st.markdown(f"<h2 style='text-align: center; color: #1D1D1F; font-size: 22px;'>{gold_car_svg} ERP Nexus</h2>", unsafe_allow_html=True)
-        st.markdown(f"<p style='text-align: center;'>Acesso: <b>{st.session_state['user_role']}</b></p>", unsafe_allow_html=True)
+        try:
+            st.image("assets/logo.png", use_container_width=True)
+        except:
+            st.markdown(f"<h2 style='text-align: center; color: #1D1D1F; font-size: 22px;'>CRIVO</h2>", unsafe_allow_html=True)
+            
+        st.markdown(f"<p style='text-align: center; font-size: 12px;'>Acesso: <b>{st.session_state['user_role'].upper()}</b></p>", unsafe_allow_html=True)
+        
+        if st.button("Sair", use_container_width=True):
+            st.session_state['logged_in'] = False
+            st.session_state['user_role'] = None
+            st.rerun()
+            
         st.markdown("---")
         
         # Filtros Globais Persistentes
@@ -201,7 +253,6 @@ def main():
             "Fluxo do dia", 
             "Transações", 
             "Gestão Financeira", 
-            "Estoque Fracionado",
             "Gestão de Pessoal",
             "CRM & Fidelidade",
             "Cadastros",
@@ -211,7 +262,7 @@ def main():
         ]
         
         icons = [
-            "cart-plus", "arrow-left-right", "wallet2", "box-seam",
+            "cart-plus", "arrow-left-right", "wallet2",
             "people", "person-badge", "database-add", "receipt",
             "cloud-arrow-up", "bar-chart-line"
         ]
@@ -223,9 +274,9 @@ def main():
             default_index=0,
             styles={
                 "container": {"padding": "0!important", "background-color": "transparent"},
-                "icon": {"color": "#5E5CE6", "font-size": "18px"}, 
+                "icon": {"color": "#C5A059", "font-size": "18px"}, 
                 "nav-link": {"font-size": "14px", "text-align": "left", "margin":"0px", "--hover-color": "#E5E5EA", "color": "#1D1D1F"},
-                "nav-link-selected": {"background-color": "#5E5CE6", "color": "white", "font-weight": "normal"},
+                "nav-link-selected": {"background-color": "#C5A059", "color": "white", "font-weight": "normal"},
             }
         )
 
@@ -234,8 +285,10 @@ def main():
         st.markdown("""
         <style>
             .block-container {
-                max-width: 760px !important;
+                max-width: 500px !important;
                 margin: 0 auto !important;
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
             }
         </style>
         """, unsafe_allow_html=True)
