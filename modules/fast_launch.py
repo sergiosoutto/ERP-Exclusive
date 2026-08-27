@@ -251,6 +251,20 @@ def render_fast_launch():
                 height: 28px !important;
                 line-height: 1 !important;
             }
+            
+            /* CSS GRID IGUAL AO DO SEU OUTRO APP PARA MANTER BOTÕES LADO A LADO NO MOBILE */
+            @media (max-width: 576px) {
+                div[data-testid="stVerticalBlockBorderWrapper"] > div > div[data-testid="stHorizontalBlock"] {
+                    display: grid !important;
+                    grid-template-columns: 1fr 1fr 1fr !important;
+                    gap: 5px !important;
+                }
+                div[data-testid="stVerticalBlockBorderWrapper"] > div > div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+                    width: 100% !important;
+                    flex: none !important;
+                    min-width: 0 !important;
+                }
+            }
         </style>
     """, unsafe_allow_html=True)
 

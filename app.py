@@ -203,10 +203,18 @@ def main():
     # Sidebar
     with st.sidebar:
         try:
-            # Logo maior e centralizada via colunas nativas
-            col1, col2, col3 = st.columns([1, 4, 1])
-            with col2:
-                st.image("assets/logo.png", use_container_width=True)
+            import base64
+            with open("assets/logo.png", "rb") as image_file:
+                encoded_string = base64.b64encode(image_file.read()).decode()
+            
+            st.markdown(
+                f"""
+                <div style="display: flex; justify-content: center; width: 100%; margin-bottom: 20px;">
+                    <img src="data:image/png;base64,{encoded_string}" style="max-width: 150px; width: 100%;">
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
         except:
             st.markdown(f"<h2 style='text-align: center; color: white; font-size: 22px;'>CRIVO</h2>", unsafe_allow_html=True)
             
