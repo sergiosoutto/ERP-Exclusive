@@ -243,28 +243,29 @@ def render_fast_launch():
                 margin-bottom: -10px !important;
             }
             
-            /* Estilo dos botões nativos nas listagens */
-            div[data-testid="stVerticalBlockBorderWrapper"] button {
-                font-size: 11px !important;
-                border-radius: 12px !important;
-                min-height: 28px !important;
-                height: 28px !important;
-                line-height: 1 !important;
+            /* Estilo exato do seu outro App para manter as "Pílulas" em linha perfeitamente */
+            div[data-testid="stPills"] > div { 
+                display: flex; 
+                justify-content: center; 
+                gap: 5px; 
+                width: 100%;
             }
-            
-            /* CSS GRID IGUAL AO DO SEU OUTRO APP PARA MANTER BOTÕES LADO A LADO NO MOBILE */
-            @media (max-width: 900px) {
-                div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] {
-                    display: grid !important;
-                    grid-template-columns: 1fr 1fr 1fr !important;
-                    gap: 5px !important;
-                }
-                div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] div[data-testid="column"] {
-                    width: 100% !important;
-                    flex: none !important;
-                    min-width: 0 !important;
-                    display: block !important;
-                }
+            div[data-testid="stPills"] button { 
+                flex: 1 1 0px !important;
+                padding: 0 4px !important; 
+                min-height: 35px !important;
+                border-radius: 20px !important;
+                font-size: 11px !important;
+                font-weight: 500 !important;
+                background-color: white !important;
+                border: 1px solid #e0e6eb !important;
+                color: #4a5568 !important;
+                white-space: nowrap !important;
+            }
+            div[data-testid="stPills"] button[data-testid="stPillActive"] {
+                background-color: #C5A059 !important;
+                color: white !important;
+                border-color: #C5A059 !important;
             }
         </style>
     """, unsafe_allow_html=True)
@@ -389,14 +390,14 @@ def render_fast_launch():
                     st.markdown(f"<p style='margin:0; font-size:12px; color:var(--text-sec);'>*{carro} | Placa: {placa}*</p>", unsafe_allow_html=True)
                     st.markdown(f"<p style='margin:2px 0 6px 0; font-size:12px;'>{gold_icon('clock')} {dt_criacao.strftime('%H:%M')} (<b>{tempo_decorrido}</b>) &nbsp;|&nbsp; <b>R$ {at.valor_total:.2f}</b></p>", unsafe_allow_html=True)
                     
-                    # Ações da OS - O Streamlit empilha nativamente no celular para não quebrar a tela
-                    c_edit, c_del, c_fin = st.columns(3)
-                    with c_edit:
-                        if st.button("Editar", key=f"btn_ed_{at.id}", use_container_width=True): dialog_editar_os(at.id)
-                    with c_del:
-                        if st.button("Excluir", key=f"btn_dl_{at.id}", use_container_width=True): dialog_excluir_os(at.id)
-                    with c_fin:
-                        if st.button("Concluir", key=f"btn_fn_{at.id}", type="primary", use_container_width=True): dialog_checkout(at.id)
+                    # Ações da OS usando a Lógica Exata do seu outro app (Pills)
+                    action = st.pills("Ações", ["✏️ Editar", "🗑️ Excluir", "✅ Concluir"], label_visibility="collapsed", key=f"act_os_{at.id}")
+                    if action == "✏️ Editar":
+                        dialog_editar_os(at.id)
+                    elif action == "🗑️ Excluir":
+                        dialog_excluir_os(at.id)
+                    elif action == "✅ Concluir":
+                        dialog_checkout(at.id)
         else:
             st.info("Pátio vazio.")
 
