@@ -200,6 +200,19 @@ def dialog_checkout(at_id):
         st.rerun()
 
 def render_fast_launch():
+    # CSS Customizado para compactar cards e abas no fluxo do dia
+    st.markdown("""
+        <style>
+            /* Diminuir padding dos containers com borda na tela do PDV */
+            div[data-testid="stVerticalBlockBorderWrapper"] > div {
+                padding: 10px !important;
+            }
+            div[data-testid="stVerticalBlockBorderWrapper"] {
+                margin-bottom: -5px !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
     if 'success_msg' not in st.session_state:
         st.session_state['success_msg'] = None
         
@@ -217,24 +230,12 @@ def render_fast_launch():
     atendimentos_hoje = db.query(Atendimento).filter(Atendimento.data_criacao >= hoje.strftime("%Y-%m-%d")).all()
     qtd_andamento = sum(1 for a in atendimentos_hoje if a.status == "Em andamento")
     qtd_concluido = sum(1 for a in atendimentos_hoje if a.status == "Finalizado")
-    total_recebido = sum(a.valor_total for a in atendimentos_hoje if a.status == "Finalizado")
-    
-    # Header em linha fina conforme pedido
-    st.markdown(f"""
-    <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;'>
-        <h3 style='margin:0; font-size:18px;'>{gold_icon('lightning')} PDV</h3>
-        <p style='margin:0; font-size:13px; color:var(--text-sec);'>
-            ⏳ Em andamento: <b>{qtd_andamento}</b> &nbsp;|&nbsp; 
-            ✅ Concluído: <b>{qtd_concluido}</b> &nbsp;|&nbsp; 
-            💰 Recebido: <b>R$ {total_recebido:,.2f}</b>
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
     
     clientes = db.query(Cliente).all()
     servicos = db.query(Servico).all()
     
-    tab1, tab2, tab3, tab4 = st.tabs(["Novo", "Pátio", "Histórico", "Resumo"])
+    # As tabs agora contém a flag
+    tab1, tab2, tab3, tab4 = st.tabs(["Novo", f"Pátio ({qtd_andamento})", f"Histórico ({qtd_concluido})", "Resumo"])
     
     # ==========================================
     # ABA 1: NOVO ATENDIMENTO
@@ -349,19 +350,20 @@ def render_fast_launch():
             for at in concluidos:
                 cli = db.query(Cliente).filter(Cliente.id == at.cliente_id).first()
                 with st.container(border=True):
-                    st.markdown(f"**{cli.nome if cli else 'Desconhecido'}** | {at.codigo}")
-                    st.markdown(f"{gold_icon('check')} *Finalizado: {datetime.fromisoformat(at.data_conclusao).strftime('%d/%m %H:%M') if at.data_conclusao else '-'}*", unsafe_allow_html=True)
-                    st.markdown(f"**Pagamento:** {at.forma_pagamento} - R$ {at.valor_total:.2f}")
-                    if st.button("Excluir (Admin)", key=f"hist_del_{at.id}"):
+                    st.markdown(f"<h4 style='margin:0;'>{cli.nome if cli else 'Desconhecido'} <span style='font-size:11px; font-weight:normal; color:var(--text-sec);'>({at.codigo})</span></h4>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='margin:4px 0; font-size:13px;'>{gold_icon('check')} <i>Finalizado: {datetime.fromisoformat(at.data_conclusao).strftime('%d/%m %H:%M') if at.data_conclusao else '-'}</i></p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='margin:0; font-size:14px;'><b>Pagamento:</b> {at.forma_pagamento} - <b>R$ {at.valor_total:.2f}</b></p>", unsafe_allow_html=True)
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    if st.button("Excluir", key=f"hist_del_{at.id}"):
                         dialog_excluir_os(at.id)
         else:
             st.info("Nenhum concluído hoje.")
 
     # ==========================================
-    # ABA 4: RESUMO
+    # ABA 4: RESUMO (GRÁFICOS)
     # ==========================================
     with tab4:
-        st.markdown(f"### {gold_icon('chart')} Resumo Diário Expandido", unsafe_allow_html=True)
+        st.markdown(f"### {gold_icon('chart')} Resumo de Hoje", unsafe_allow_html=True)
         hoje_str = hoje.strftime("%Y-%m-%d")
         total_dia = db.query(Atendimento).filter(Atendimento.data_criacao >= hoje_str, Atendimento.status == "Finalizado").all()
         
@@ -370,26 +372,41 @@ def render_fast_launch():
         
         c1, c2 = st.columns(2)
         with c1:
-            st.markdown("<div class='premium-card' style='text-align:center;'><span style='font-size:14px;'>Faturamento Hoje</span><br><b style='font-size:22px; color:var(--success);'>R$ " + f"{valor_total:,.2f}" + "</b></div>", unsafe_allow_html=True)
+            st.markdown("<div class='premium-card' style='text-align:center;'><span style='font-size:14px;'>Faturamento</span><br><b style='font-size:20px; color:var(--success);'>R$ " + f"{valor_total:,.2f}" + "</b></div>", unsafe_allow_html=True)
         with c2:
-            st.markdown("<div class='premium-card' style='text-align:center;'><span style='font-size:14px;'>Ticket Médio</span><br><b style='font-size:22px; color:var(--accent);'>R$ " + f"{ticket_medio:,.2f}" + "</b></div>", unsafe_allow_html=True)
+            st.markdown("<div class='premium-card' style='text-align:center;'><span style='font-size:14px;'>Ticket Médio</span><br><b style='font-size:20px; color:var(--accent);'>R$ " + f"{ticket_medio:,.2f}" + "</b></div>", unsafe_allow_html=True)
             
         st.markdown("---")
         
-        # Tabela Detalhada
-        st.markdown("#### Últimas Vendas do Dia")
-        if total_dia:
-            dados_tabela = []
-            for a in total_dia:
-                cliente = db.query(Cliente).filter(Cliente.id == a.cliente_id).first()
-                dados_tabela.append({
-                    "OS": a.codigo,
-                    "Cliente": cliente.nome if cliente else "N/I",
-                    "Veículo": cliente.modelo_veiculo if cliente else "N/I",
-                    "Pagamento": a.forma_pagamento,
-                    "Total (R$)": float(a.valor_total)
-                })
-            df = pd.DataFrame(dados_tabela)
-            st.dataframe(df, use_container_width=True, hide_index=True)
+        # Preparar dados para Gráfico de Horas Quentes
+        st.markdown("#### 🔥 Horas Quentes")
+        horas_count = {}
+        for a in total_dia:
+            if a.data_conclusao:
+                h = datetime.fromisoformat(a.data_conclusao).hour
+                horas_count[f"{h}h"] = horas_count.get(f"{h}h", 0) + 1
+                
+        if horas_count:
+            df_horas = pd.DataFrame(list(horas_count.items()), columns=["Hora", "Concluídos"]).set_index("Hora")
+            st.bar_chart(df_horas)
         else:
-            st.write("Sem dados para exibir na tabela.")
+            st.write("Sem dados de horas.")
+            
+        # Preparar dados para Gráfico de Serviços Executados
+        st.markdown("#### 🛠️ Serviços Executados")
+        servicos_count = {}
+        if total_dia:
+            # Pega IDs de todos atendimentos de hoje
+            ids_hoje = [a.id for a in total_dia]
+            # Busca itens de serviço desses atendimentos
+            itens_hoje = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id.in_(ids_hoje), ItemAtendimento.tipo == "Serviço").all()
+            for i in itens_hoje:
+                s = db.query(Servico).filter(Servico.id == i.referencia_id).first()
+                if s:
+                    servicos_count[s.nome] = servicos_count.get(s.nome, 0) + 1
+                    
+        if servicos_count:
+            df_serv = pd.DataFrame(list(servicos_count.items()), columns=["Serviço", "Qtd"]).set_index("Serviço")
+            st.bar_chart(df_serv, color="#C5A059")
+        else:
+            st.write("Sem dados de serviços.")
