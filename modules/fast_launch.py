@@ -232,7 +232,7 @@ def dialog_checkout(at_id):
         st.rerun()
 
 def render_fast_launch():
-    # CSS Customizado para espremer MUITO as caixas de OS
+    # CSS Customizado para espremer MUITO as caixas de OS e transformar botões em pílulas
     st.markdown("""
         <style>
             div[data-testid="stVerticalBlockBorderWrapper"] > div {
@@ -243,6 +243,25 @@ def render_fast_launch():
                 margin-bottom: -10px !important;
             }
             
+            /* Forçar botões inline (lado a lado) dentro do card */
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] {
+                flex-wrap: nowrap !important;
+                gap: 4px !important;
+            }
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div {
+                min-width: 0 !important;
+            }
+            
+            /* Estilo dos botões como pílulas pequenas */
+            div[data-testid="stVerticalBlockBorderWrapper"] button {
+                padding: 2px 6px !important;
+                font-size: 11px !important;
+                border-radius: 12px !important;
+                min-height: 24px !important;
+                height: 24px !important;
+                line-height: 1 !important;
+            }
+            
             /* Classe para o Balão Vermelho Elegante */
             .red-badge {
                 background-color: #FF3B30;
@@ -250,7 +269,7 @@ def render_fast_launch():
                 font-size: 11px;
                 font-weight: 600;
                 border-radius: 12px;
-                padding: 2px 8px;
+                padding: 2px 6px;
                 margin-left: 6px;
                 vertical-align: middle;
                 box-shadow: 0 2px 4px rgba(255, 59, 48, 0.3);
@@ -274,10 +293,30 @@ def render_fast_launch():
     qtd_andamento = sum(1 for a in atendimentos_hoje if a.status == "Em andamento")
     qtd_concluido = sum(1 for a in atendimentos_hoje if a.status == "Finalizado")
     
+    # Hack JS para injetar as badges vermelhas DIRETAMENTE nas abas nativas do Streamlit!
+    st.components.v1.html(f"""
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const root = window.parent.document;
+            setTimeout(() => {{
+                const tabs = root.querySelectorAll('button[data-baseweb="tab"] p');
+                if(tabs.length >= 3) {{
+                    if(!tabs[1].innerHTML.includes('red-badge')) {{
+                        tabs[1].innerHTML = `Pátio <span class="red-badge">{qtd_andamento}</span>`;
+                    }}
+                    if(!tabs[2].innerHTML.includes('red-badge')) {{
+                        tabs[2].innerHTML = `Histórico <span class="red-badge">{qtd_concluido}</span>`;
+                    }}
+                }}
+            }}, 500);
+        });
+    </script>
+    """, height=0)
+    
     clientes = db.query(Cliente).all()
     servicos = db.query(Servico).all()
     
-    # Abas Limpas, sem texto poluído
+    # Abas Limpas, o JS coloca as badges
     tab1, tab2, tab3, tab4 = st.tabs(["Novo", "Pátio", "Histórico", "Resumo"])
     
     # ==========================================
@@ -440,16 +479,35 @@ def render_fast_launch():
             
         st.markdown(f"#### {gold_icon('wrench')} Serviços Executados", unsafe_allow_html=True)
         servicos_count = {}
+        tempos_servicos = {}
         if total_dia:
             ids_hoje = [a.id for a in total_dia]
             itens_hoje = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id.in_(ids_hoje), ItemAtendimento.tipo == "Serviço").all()
-            for i in itens_hoje:
-                s = db.query(Servico).filter(Servico.id == i.referencia_id).first()
-                if s:
-                    servicos_count[s.nome] = servicos_count.get(s.nome, 0) + 1
+            
+            for a in total_dia:
+                dt_cria = datetime.fromisoformat(a.data_criacao)
+                dt_fim = datetime.fromisoformat(a.data_conclusao)
+                delta = (dt_fim - dt_cria).total_seconds() / 60.0 # minutos
+                
+                # Pegar itens deste atendimento
+                itens_deste_at = [i for i in itens_hoje if i.atendimento_id == a.id]
+                for i in itens_deste_at:
+                    s = db.query(Servico).filter(Servico.id == i.referencia_id).first()
+                    if s:
+                        servicos_count[s.nome] = servicos_count.get(s.nome, 0) + 1
+                        if s.nome not in tempos_servicos:
+                            tempos_servicos[s.nome] = []
+                        # Se houver multiplos servicos na mesma OS, o tempo eh dividido? 
+                        # Simplificacao: o tempo total da OS eh o tempo daquele servico (ja que nao tem inicio/fim granular)
+                        tempos_servicos[s.nome].append(delta)
                     
         if servicos_count:
             df_serv = pd.DataFrame(list(servicos_count.items()), columns=["Serviço", "Qtd"]).set_index("Serviço")
             st.bar_chart(df_serv, color="#C5A059")
+            
+            st.markdown(f"#### {gold_icon('clock')} Tempo Médio Gasto", unsafe_allow_html=True)
+            for nome_serv, tempos in tempos_servicos.items():
+                media_min = sum(tempos)/len(tempos)
+                st.markdown(f"<p style='margin:0; font-size:14px;'><b>{nome_serv}</b>: {int(media_min)} minutos</p>", unsafe_allow_html=True)
         else:
             st.write("Sem dados.")

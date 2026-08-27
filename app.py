@@ -205,19 +205,21 @@ def inject_custom_css():
 
 inject_custom_css()
 
-# Hack JS focado em fechar a sidebar via intercepção de touch
+# Hack JS DEFINITIVO para recolhimento da sidebar via mensageria interna do Streamlit
 st.components.v1.html("""
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        const root = window.parent.document;
-        // Se clicar em qualquer lugar da tela, verificamos se a sidebar está aberta no mobile e fechamos.
-        // A opção menu roda em iframe, então escutamos o blur da window também.
-        window.addEventListener('blur', function() {
-            if (window.parent.innerWidth < 992) {
-                setTimeout(() => {
-                    const closeBtn = root.querySelector('[data-testid="baseButton-header"]');
-                    if (closeBtn) closeBtn.click();
-                }, 300);
+        const root = window.parent;
+        // O option_menu roda num iframe. Quando clicado, ele envia uma mensagem pro parent window (Streamlit)
+        root.addEventListener('message', function(e) {
+            // Intercepta a mensagem exata que o componente envia ao mudar de aba
+            if (e.data && e.data.type === 'streamlit:setComponentValue') {
+                if (root.innerWidth < 992) {
+                    const closeBtn = root.document.querySelector('[data-testid="baseButton-header"]');
+                    if (closeBtn) {
+                        setTimeout(() => closeBtn.click(), 100);
+                    }
+                }
             }
         });
     });
@@ -281,7 +283,7 @@ def main():
         st.markdown("""
         <style>
             [data-testid="stSidebar"] img {
-                max-width: 130px !important;
+                max-width: 150px !important;
                 margin: 0 auto !important;
                 display: block !important;
             }
@@ -325,7 +327,7 @@ def main():
             icons=icons,
             default_index=0,
             styles={
-                "container": {"padding": "0!important", "background-color": "#001C25", "border": "none", "border-radius": "0"},
+                "container": {"padding": "0!important", "background-color": "#001C25", "border": "1px solid rgba(255,255,255,0.1)", "border-radius": "8px"},
                 "icon": {"color": "#C5A059", "font-size": "18px"}, 
                 "nav-link": {"font-size": "14px", "text-align": "left", "margin":"0px", "--hover-color": "rgba(255,255,255,0.1)", "color": "rgba(255,255,255,0.85)"},
                 "nav-link-selected": {"background-color": "#C5A059", "color": "white", "font-weight": "normal"},
