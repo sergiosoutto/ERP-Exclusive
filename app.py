@@ -35,7 +35,7 @@ def inject_custom_css():
             --danger: #FF3B30;
             --warning: #FF9500;
             --accent: #C5A059; /* Gold */
-            --crivo-blue: #081216; /* Deep dark blue do logo */
+            --crivo-blue: #001C25; /* Cor exata do fundo da logo */
         }
 
         /* Estilo da área de conteúdo (Full width adaptável) */
@@ -62,6 +62,16 @@ def inject_custom_css():
         }
         [data-testid="stSidebar"] hr {
             border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+        /* Botões na sidebar transparentes com borda clara */
+        [data-testid="stSidebar"] .stButton > button {
+            background-color: transparent !important;
+            color: white !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
+        }
+        [data-testid="stSidebar"] .stButton > button:hover {
+            border-color: white !important;
+            background-color: rgba(255,255,255,0.1) !important;
         }
 
         /* Esconder Menu Hamburguer e Footer */
@@ -303,7 +313,7 @@ def main():
             icons=icons,
             default_index=0,
             styles={
-                "container": {"padding": "0!important", "background-color": "transparent"},
+                "container": {"padding": "0!important", "background-color": "#001C25"},
                 "icon": {"color": "#C5A059", "font-size": "18px"}, 
                 "nav-link": {"font-size": "14px", "text-align": "left", "margin":"0px", "--hover-color": "rgba(255,255,255,0.1)", "color": "rgba(255,255,255,0.85)"},
                 "nav-link-selected": {"background-color": "#C5A059", "color": "white", "font-weight": "normal"},
