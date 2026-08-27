@@ -24,7 +24,7 @@ def inject_custom_css():
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
-        /* Variáveis de Cores - Clean Apple (Taste-Skill) */
+        /* Variáveis de Cores - Clean Apple (Taste-Skill) + Crivo Blue */
         :root {
             --bg-color: #F5F5F7; /* Fundo Apple padrão */
             --card-bg: #FFFFFF;
@@ -35,6 +35,7 @@ def inject_custom_css():
             --danger: #FF3B30;
             --warning: #FF9500;
             --accent: #C5A059; /* Gold */
+            --crivo-blue: #081216; /* Deep dark blue do logo */
         }
 
         /* Estilo da área de conteúdo (Full width adaptável) */
@@ -50,6 +51,17 @@ def inject_custom_css():
             font-family: 'Outfit', -apple-system, sans-serif !important;
             background-color: var(--bg-color) !important;
             color: var(--text-main) !important;
+        }
+        
+        /* Cor de fundo do Menu Lateral */
+        [data-testid="stSidebar"] {
+            background-color: var(--crivo-blue) !important;
+        }
+        [data-testid="stSidebar"] * {
+            color: rgba(255, 255, 255, 0.9) !important;
+        }
+        [data-testid="stSidebar"] hr {
+            border-color: rgba(255, 255, 255, 0.1) !important;
         }
 
         /* Esconder Menu Hamburguer e Footer */
@@ -168,21 +180,27 @@ def inject_custom_css():
 
 inject_custom_css()
 
-# Auto recolher menu lateral após clique JS script
-st.markdown("""
+# Auto recolher menu lateral após clique JS script. Tentando acessar o DOM via JS de forma robusta.
+st.components.v1.html("""
 <script>
-    const navLinks = window.parent.document.querySelectorAll('.nav-link');
-    navLinks.forEach(link => {
-        link.addEventListener('click', () => {
-            const sidebar = window.parent.document.querySelector('[data-testid="stSidebar"]');
-            if(sidebar && window.innerWidth < 992) {
-                const closeBtn = window.parent.document.querySelector('[data-testid="baseButton-header"]');
-                if(closeBtn) closeBtn.click();
+    document.addEventListener("DOMContentLoaded", function() {
+        const root = window.parent.document;
+        // Encontra o container do option_menu e escuta cliques
+        root.addEventListener('click', function(e) {
+            // Se o alvo do clique foi um nav-link (opção do menu)
+            if (e.target.closest('.nav-link')) {
+                // Checar se a tela é pequena (mobile)
+                if (window.parent.innerWidth < 992) {
+                    // Clicar no botão de fechar a sidebar
+                    const closeBtn = root.querySelector('[data-testid="baseButton-header"]');
+                    if (closeBtn) closeBtn.click();
+                }
             }
         });
     });
 </script>
-""", unsafe_allow_html=True)
+""", height=0)
+
 
 # ==========================================
 # 3. Gestão de Estado da Sessão (SPA Feeling)
@@ -196,13 +214,22 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def render_login():
+    # Injetar background azul para a tela de login
+    st.markdown("""
+        <style>
+            .stApp { background-color: var(--crivo-blue) !important; }
+            /* Ajustar textos do login para visibilidade */
+            .premium-card { background-color: rgba(255, 255, 255, 0.95); }
+        </style>
+    """, unsafe_allow_html=True)
+    
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
         st.markdown("<br><br><br>", unsafe_allow_html=True)
         try:
             st.image("assets/logo.png", use_container_width=True)
         except:
-            st.markdown(f"<h1 style='text-align: center;'>CRIVO <br><span style='font-size:16px; color:var(--accent);'>CAR STUDIO</span></h1>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='text-align: center; color: white;'>CRIVO <br><span style='font-size:16px; color:var(--accent);'>CAR STUDIO</span></h1>", unsafe_allow_html=True)
             
         st.markdown("<div class='premium-card'>", unsafe_allow_html=True)
         username = st.text_input("Usuário")
@@ -232,10 +259,11 @@ def main():
         try:
             st.image("assets/logo.png", use_container_width=True)
         except:
-            st.markdown(f"<h2 style='text-align: center; color: #1D1D1F; font-size: 22px;'>CRIVO</h2>", unsafe_allow_html=True)
+            st.markdown(f"<h2 style='text-align: center; color: white; font-size: 22px;'>CRIVO</h2>", unsafe_allow_html=True)
             
-        st.markdown(f"<p style='text-align: center; font-size: 12px;'>Acesso: <b>{st.session_state['user_role'].upper()}</b></p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align: center; font-size: 12px; color: rgba(255,255,255,0.7);'>Acesso: <b>{st.session_state['user_role'].upper()}</b></p>", unsafe_allow_html=True)
         
+        # Botão sair escuro/border
         if st.button("Sair", use_container_width=True):
             st.session_state['logged_in'] = False
             st.session_state['user_role'] = None
@@ -244,7 +272,9 @@ def main():
         st.markdown("---")
         
         # Filtros Globais Persistentes
-        st.markdown("<p style='font-size: 14px; color: #86868B; margin-bottom: 5px;'>Filtro Global</p>", unsafe_allow_html=True)
+        st.markdown("<p style='font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 5px;'>Filtro Global</p>", unsafe_allow_html=True)
+        # Hack para manter input branco
+        st.markdown("""<style>div[data-baseweb="input"] input { color: var(--text-main) !important; }</style>""", unsafe_allow_html=True)
         global_date = st.date_input("Data de Referência", label_visibility="collapsed")
         st.markdown("---")
         
@@ -275,7 +305,7 @@ def main():
             styles={
                 "container": {"padding": "0!important", "background-color": "transparent"},
                 "icon": {"color": "#C5A059", "font-size": "18px"}, 
-                "nav-link": {"font-size": "14px", "text-align": "left", "margin":"0px", "--hover-color": "#E5E5EA", "color": "#1D1D1F"},
+                "nav-link": {"font-size": "14px", "text-align": "left", "margin":"0px", "--hover-color": "rgba(255,255,255,0.1)", "color": "rgba(255,255,255,0.85)"},
                 "nav-link-selected": {"background-color": "#C5A059", "color": "white", "font-weight": "normal"},
             }
         )
