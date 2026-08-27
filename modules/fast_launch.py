@@ -248,13 +248,15 @@ def render_fast_launch():
                 flex-wrap: nowrap !important;
                 gap: 4px !important;
             }
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] > div {
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] {
                 min-width: 0 !important;
+                width: auto !important;
+                flex: 1 1 auto !important;
             }
             
             /* Estilo dos botões como pílulas pequenas */
             div[data-testid="stVerticalBlockBorderWrapper"] button {
-                padding: 2px 6px !important;
+                padding: 2px 4px !important;
                 font-size: 11px !important;
                 border-radius: 12px !important;
                 min-height: 24px !important;
@@ -298,7 +300,7 @@ def render_fast_launch():
     <script>
         document.addEventListener("DOMContentLoaded", function() {{
             const root = window.parent.document;
-            setTimeout(() => {{
+            setInterval(() => {{
                 const tabs = root.querySelectorAll('button[data-baseweb="tab"] p');
                 if(tabs.length >= 3) {{
                     if(!tabs[1].innerHTML.includes('red-badge')) {{

@@ -60,10 +60,16 @@ def inject_custom_css():
         [data-testid="stSidebar"] * {
             color: rgba(255, 255, 255, 0.9) !important;
         }
-        [data-testid="stSidebar"] hr {
-            border-color: rgba(255, 255, 255, 0.1) !important;
+        /* Forçar Logo Menor no Mobile e Desktop */
+        [data-testid="stSidebar"] [data-testid="stImage"] {
+            display: flex !important;
+            justify-content: center !important;
         }
-        
+        [data-testid="stSidebar"] [data-testid="stImage"] img {
+            max-width: 150px !important;
+            width: 100% !important;
+        }
+
         /* Consertar contraste do Filtro de Data na Sidebar - Força bruta */
         [data-testid="stSidebar"] div[data-baseweb="input"] * {
             background-color: #001C25 !important;
@@ -72,7 +78,7 @@ def inject_custom_css():
             border-color: rgba(255,255,255,0.2) !important;
         }
         
-        /* Remover bordas de iframes (como o option_menu) */
+        /* Remover bordas de iframes (como o option_menu) E APLICAR BORDA NA CAIXA DO MENU */
         iframe {
             border: none !important;
             outline: none !important;
@@ -205,23 +211,34 @@ def inject_custom_css():
 
 inject_custom_css()
 
-# Hack JS DEFINITIVO para recolhimento da sidebar via mensageria interna do Streamlit
+# Hack JS DEFINITIVO para recolhimento da sidebar com múltiplos gatilhos
 st.components.v1.html("""
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         const root = window.parent;
-        // O option_menu roda num iframe. Quando clicado, ele envia uma mensagem pro parent window (Streamlit)
+        
+        function closeSidebar() {
+            if (root.innerWidth < 992) {
+                const closeBtn = root.document.querySelector('[data-testid="baseButton-header"]');
+                if (closeBtn) closeBtn.click();
+            }
+        }
+
+        // Gatilho 1: Mensagens do Streamlit Component (option_menu)
         root.addEventListener('message', function(e) {
-            // Intercepta a mensagem exata que o componente envia ao mudar de aba
             if (e.data && e.data.type === 'streamlit:setComponentValue') {
-                if (root.innerWidth < 992) {
-                    const closeBtn = root.document.querySelector('[data-testid="baseButton-header"]');
-                    if (closeBtn) {
-                        setTimeout(() => closeBtn.click(), 100);
-                    }
-                }
+                setTimeout(closeSidebar, 50);
             }
         });
+
+        // Gatilho 2: Monitoramento de clique dentro de qualquer Iframe
+        let monitor = setInterval(function() {
+            const active = root.document.activeElement;
+            if (active && active.tagName === 'IFRAME') {
+                closeSidebar();
+                active.blur(); // Tira o foco para não entrar em loop
+            }
+        }, 500);
     });
 </script>
 """, height=0)
