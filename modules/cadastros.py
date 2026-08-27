@@ -244,7 +244,7 @@ def render_cadastros():
                     f"<h4 style='margin:0;'>{c.nome}</h4>"
                     f"{gold_icon('bank')}"
                     f"</div>"
-                    f"<h3 style='color: {'#34C759' if c.saldo_atual >= 0 else '#FF3B30'}; margin-top: 5px;'>R$ {c.saldo_atual:,.2f}</h3>"
+                    f"<h3 style='color: {'var(--success)' if c.saldo_atual >= 0 else 'var(--danger)'}; margin-top: 5px; font-weight: 500;'>R$ {c.saldo_atual:,.2f}</h3>"
                     f"</div>"
                 )
                 st.markdown(html_card, unsafe_allow_html=True)

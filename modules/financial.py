@@ -263,57 +263,56 @@ def render_financial():
     <style>
     div.stRadio > div[role='radiogroup'] { flex-direction: row; flex-wrap: wrap; gap: 10px; }
     div[data-testid="column"] > div { height: 100%; }
+    
+    /* Taste-Skill: Clean Apple KPI Cards */
     .kpi-card {
-        background-color: #FFFFFF;
-        border: 1px solid #E5E5EA;
-        border-radius: 12px;
-        padding: 16px 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 20px 24px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.02);
         display: flex;
         flex-direction: column;
         justify-content: center;
         height: 100%;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .kpi-card:hover {
+        box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+        transform: translateY(-1px);
     }
     .kpi-title {
         font-size: 11px;
-        font-weight: 700;
-        margin-bottom: 8px;
+        font-weight: 600;
+        margin-bottom: 12px;
         text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-sec);
     }
     .kpi-value {
-        font-size: 24px;
-        font-weight: 700;
+        font-size: 28px;
+        font-weight: 600;
         margin: 0;
+        letter-spacing: -0.03em;
+        color: var(--text-main);
     }
     .kpi-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: 8px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border-color);
     }
     .kpi-subtext {
         font-size: 11px;
-        color: #86868B;
+        color: var(--text-sec);
     }
     .kpi-subval {
-        font-size: 13px;
-        font-weight: 600;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-main);
     }
-    .toolbar-btn {
-        background: transparent;
-        border: 1px solid #E5E5EA;
-        border-radius: 8px;
-        padding: 6px 12px;
-        color: #1D1D1F;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        text-decoration: none;
-    }
-    .toolbar-btn:hover { background: #F5F5F7; }
     </style>
     """, unsafe_allow_html=True)
     
@@ -384,39 +383,42 @@ def render_financial():
     
     saldo_contas = sum(c.saldo_atual for c in db.query(ContaBancaria).all())
     saldo_previsto_final = saldo_contas + receitas_pendentes - despesas_pendentes
-    cor_saldo_final = "#34C759" if saldo_previsto_final >= 0 else "#FF3B30"
+    cor_saldo_final = "var(--success)" if saldo_previsto_final >= 0 else "var(--danger)"
     
     st.markdown(f"""
-    <div class="kpi-card" style="border-left: 4px solid #5E5CE6; margin-bottom: 20px; padding: 12px 20px;">
-        <p style="font-size: 11px; font-weight: bold; color: #86868B; margin-bottom: 5px;">{gold_icon('check')} SALDO PREVISTO (CONSIDERANDO PENDÊNCIAS DO MÊS)</p>
+    <div class="premium-card" style="margin-bottom: 24px;">
+        <p style="font-size: 11px; font-weight: 600; color: var(--text-sec); margin-bottom: 8px; letter-spacing: 0.05em; text-transform: uppercase;">
+            {gold_icon('check')} SALDO PREVISTO (CONSIDERANDO PENDÊNCIAS DO MÊS)
+        </p>
         <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-            <p style="font-size: 12px; color: #86868B; margin: 0;">Fórmula: Saldo Atual (R$ {saldo_contas:,.2f}) + Receitas (R$ {receitas_pendentes:,.2f}) - Despesas (R$ {despesas_pendentes:,.2f})</p>
-            <h2 style="margin: 0; color: {cor_saldo_final}; font-size: 28px;">R$ {saldo_previsto_final:,.2f}</h2>
+            <p style="font-size: 13px; color: var(--text-sec); margin: 0;">Fórmula: Saldo Atual (R$ {saldo_contas:,.2f}) + Receitas (R$ {receitas_pendentes:,.2f}) - Despesas (R$ {despesas_pendentes:,.2f})</p>
+            <h2 style="margin: 0; color: {cor_saldo_final}; font-size: 32px; letter-spacing: -0.03em;">R$ {saldo_previsto_final:,.2f}</h2>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    # Taste-Skill: Bento Grid Layout - Assimétrico
+    kpi1, kpi2, kpi3, kpi4 = st.columns([1.2, 1, 1, 1])
     with kpi1:
-        cor_saldo_atual = "#1D1D1F" if saldo_contas >= 0 else "#FF3B30"
+        cor_saldo_atual = "var(--text-main)" if saldo_contas >= 0 else "var(--danger)"
         st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-title" style="color: #1D1D1F;">{gold_icon('credit-card')} SALDO ATUAL (Bancos)</div>
-            <div class="kpi-value" style="color: {cor_saldo_atual};">R$ {saldo_contas:,.2f}</div>
+        <div class="kpi-card" style="background-color: var(--card-bg); border-color: var(--accent);">
+            <div class="kpi-title" style="color: var(--text-main);">{gold_icon('credit-card')} SALDO ATUAL (Bancos)</div>
+            <div class="kpi-value" style="color: {cor_saldo_atual}; font-size: 32px;">R$ {saldo_contas:,.2f}</div>
         </div>
         """, unsafe_allow_html=True)
     with kpi2:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-title" style="color: #34C759;">{gold_icon('graph-up-arrow')} RECEITAS (MÊS)</div>
-            <div class="kpi-row">
+            <div class="kpi-title" style="color: var(--success);">{gold_icon('graph-up-arrow')} RECEITAS (MÊS)</div>
+            <div class="kpi-row" style="border-top:none; padding-top:0; margin-top:0;">
                 <div>
                     <div class="kpi-subtext">Previsto</div>
-                    <div class="kpi-subval" style="color: #1D1D1F;">R$ {receita_prevista:,.2f}</div>
+                    <div class="kpi-subval">R$ {receita_prevista:,.2f}</div>
                 </div>
                 <div style="text-align:right;">
                     <div class="kpi-subtext">Real</div>
-                    <div class="kpi-subval" style="color: #34C759;">R$ {receita_real:,.2f}</div>
+                    <div class="kpi-subval" style="color: var(--success);">R$ {receita_real:,.2f}</div>
                 </div>
             </div>
         </div>
@@ -424,15 +426,15 @@ def render_financial():
     with kpi3:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-title" style="color: #FF3B30;">{gold_icon('graph-down-arrow')} DESPESAS (MÊS)</div>
-            <div class="kpi-row">
+            <div class="kpi-title" style="color: var(--danger);">{gold_icon('graph-down-arrow')} DESPESAS (MÊS)</div>
+            <div class="kpi-row" style="border-top:none; padding-top:0; margin-top:0;">
                 <div>
                     <div class="kpi-subtext">Previsto</div>
-                    <div class="kpi-subval" style="color: #1D1D1F;">R$ {despesa_prevista:,.2f}</div>
+                    <div class="kpi-subval">R$ {despesa_prevista:,.2f}</div>
                 </div>
                 <div style="text-align:right;">
                     <div class="kpi-subtext">Real</div>
-                    <div class="kpi-subval" style="color: #FF3B30;">R$ {despesa_real:,.2f}</div>
+                    <div class="kpi-subval" style="color: var(--danger);">R$ {despesa_real:,.2f}</div>
                 </div>
             </div>
         </div>
@@ -441,11 +443,11 @@ def render_financial():
         pendentes_qtd = len([l for l in lancamentos if l.status == "Pendente"])
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-title" style="color: #FF9500;">{gold_icon('hourglass-split')} PENDENTES</div>
-            <div class="kpi-value" style="color: #1D1D1F; font-size: 20px;">{pendentes_qtd} lanç.</div>
+            <div class="kpi-title" style="color: var(--warning);">{gold_icon('hourglass-split')} PENDENTES</div>
+            <div class="kpi-value" style="font-size: 24px;">{pendentes_qtd} lanç.</div>
             <div class="kpi-row" style="margin-top: 4px;">
-                <div class="kpi-subval" style="color:#34C759;">+ R$ {receitas_pendentes:,.2f}</div>
-                <div class="kpi-subval" style="color:#FF3B30;">- R$ {despesas_pendentes:,.2f}</div>
+                <div class="kpi-subval" style="color:var(--success);">+ R$ {receitas_pendentes:,.2f}</div>
+                <div class="kpi-subval" style="color:var(--danger);">- R$ {despesas_pendentes:,.2f}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)

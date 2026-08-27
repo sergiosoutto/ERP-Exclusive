@@ -21,17 +21,19 @@ init_db()
 def inject_custom_css():
     st.markdown("""
     <style>
-        /* Variáveis de Cores */
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+        /* Variáveis de Cores - Clean Apple (Taste-Skill) */
         :root {
-            --bg-color: #F5F5F7;
+            --bg-color: #F5F5F7; /* Fundo Apple padrão */
             --card-bg: #FFFFFF;
             --text-main: #1D1D1F;
             --text-sec: #86868B;
-            --border-color: #E5E5EA;
+            --border-color: rgba(0, 0, 0, 0.08);
             --success: #34C759;
             --danger: #FF3B30;
             --warning: #FF9500;
-            --accent: #5E5CE6;
+            --accent: #C5A059; /* Gold */
         }
 
         /* Estilo da área de conteúdo (Full width adaptável) */
@@ -43,86 +45,122 @@ def inject_custom_css():
         }
 
         /* Fontes e Fundo do App */
-        .stApp {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+        .stApp, .stApp > header {
+            font-family: 'Outfit', -apple-system, sans-serif !important;
             background-color: var(--bg-color) !important;
+            color: var(--text-main) !important;
         }
 
-        /* Esconder Menu Hamburguer e Footer, mantendo a seta do sidebar visível */
+        /* Esconder Menu Hamburguer e Footer */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
-        header {
-            background-color: transparent !important;
-        }
 
-        /* Estilo dos Cartões (Cards) - UX Master */
+        /* Estilo dos Cartões (Cards) - Glassmorphism Premium Claro */
         .premium-card {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 10px 14px !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+            border-radius: 16px;
+            padding: 16px !important;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.02);
             margin-bottom: 8px !important;
-            transition: box-shadow 0.3s ease;
+            transition: all 0.3s ease;
         }
         .premium-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+            border-color: rgba(0, 0, 0, 0.12);
         }
 
         /* Ajustes de Títulos e Textos */
         h1, h2, h3, h4, h5, h6 {
             color: var(--text-main) !important;
-            font-weight: 600 !important;
+            font-weight: 500 !important;
+            letter-spacing: -0.02em !important;
             margin-top: 4px !important;
             margin-bottom: 4px !important;
         }
         p, span, label {
+            color: var(--text-sec);
+            font-weight: 400;
+        }
+        strong, b {
             color: var(--text-main);
+            font-weight: 500;
         }
 
         /* Ajuste do divisor */
         hr {
-            margin-top: 8px !important;
-            margin-bottom: 8px !important;
+            border-color: var(--border-color) !important;
+            margin-top: 16px !important;
+            margin-bottom: 16px !important;
         }
 
         /* Reduzir espaçamento vertical geral dos blocos do Streamlit */
         div[data-testid="stVerticalBlock"] {
-            gap: 0.45rem !important;
+            gap: 0.75rem !important;
         }
 
-        /* Ajuste do botão para formato reduzido, compacto e alinhado */
+        /* Ajuste do botão para formato reduzido, compacto e com TATO (Física) */
         .stButton>button {
             border-radius: 8px !important;
             font-weight: 500 !important;
             font-size: 13px !important;
-            padding: 4px 12px !important;
+            padding: 6px 16px !important;
             white-space: nowrap !important;
+            background-color: #FFFFFF !important;
+            color: var(--text-main) !important;
+            border: 1px solid var(--border-color) !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease !important;
+        }
+        .stButton>button:hover {
+            border-color: rgba(0,0,0,0.15) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
+            color: var(--text-main) !important;
+        }
+        .stButton>button:active {
+            transform: scale(0.96) !important; /* Física magnética/clique */
+            box-shadow: 0 0px 0px rgba(0,0,0,0) !important;
         }
 
-        /* Forçar texto branco para botões primários (primary) para garantir excelente contraste */
-        button[kind="primary"], button[kind="primary"] p, button[kind="primary"] span {
+        /* Botão Primário (Gold) - Contraste exigido pela skill */
+        button[kind="primary"] {
+            background-color: var(--accent) !important;
+            border-color: var(--accent) !important;
+            color: #FFFFFF !important; 
+        }
+        button[kind="primary"]:hover {
+            background-color: #D4B06A !important;
             color: #FFFFFF !important;
         }
-
-        /* Melhorar contraste das caixas de preenchimento (inputs e selectbox) */
-        div[data-baseweb="input"] {
-            border: 1.5px solid #86868B !important;
-            border-radius: 8px !important;
-            background-color: #FFFFFF !important;
-        }
-        div[data-baseweb="select"] {
-            border: 1.5px solid #86868B !important;
-            border-radius: 8px !important;
-            background-color: #FFFFFF !important;
+        button[kind="primary"] p, button[kind="primary"] span {
+            color: #FFFFFF !important;
+            font-weight: 600 !important;
         }
 
-        /* Força fundo branco nos modais/dialogs do Streamlit para evitar restos de dark mode */
+        /* Melhorar contraste das caixas de preenchimento (inputs e selectbox) para Light Mode */
+        div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"] {
+            border: 1px solid rgba(0,0,0,0.1) !important;
+            border-radius: 8px !important;
+            background-color: #FFFFFF !important;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.01) !important;
+        }
+        div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within {
+            border-color: var(--accent) !important;
+            box-shadow: 0 0 0 1px var(--accent) !important;
+        }
+        div[data-baseweb="input"] input, div[data-baseweb="select"] div, div[data-baseweb="textarea"] textarea {
+            color: var(--text-main) !important;
+        }
+
+        /* Modais/Dialogs do Streamlit adaptados para Clean Apple */
         div[role="dialog"] {
             background-color: #FFFFFF !important;
-            color: #1D1D1F !important;
+            color: var(--text-main) !important;
             border: 1px solid var(--border-color) !important;
-            border-radius: 12px !important;
+            border-radius: 16px !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
         }
     </style>
     """, unsafe_allow_html=True)
