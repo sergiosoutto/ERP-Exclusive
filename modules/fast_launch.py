@@ -235,35 +235,34 @@ def render_fast_launch():
     # CSS Customizado para espremer MUITO as caixas de OS e transformar botões em pílulas
     st.markdown("""
         <style>
-            div[data-testid="stVerticalBlockBorderWrapper"] > div {
-                padding: 6px 10px !important;
-                gap: 2px !important;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"] {
+            /* Reduzir o gap do Vertical Block que segura os cards */
+            div[data-testid="stVerticalBlock"]:has(.premium-card) {
+                gap: 0.1rem !important;
                 margin-bottom: -10px !important;
             }
             
-            /* Forçar botões inline (lado a lado) dentro do card */
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] {
+            /* Forçar botões inline (lado a lado) dentro do container do OS */
+            div[data-testid="stVerticalBlock"]:has(.premium-card) div[data-testid="stHorizontalBlock"] {
                 flex-direction: row !important; /* Vence o @media query do mobile */
                 flex-wrap: nowrap !important;
                 gap: 4px !important;
                 display: flex !important;
             }
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] {
+            div[data-testid="stVerticalBlock"]:has(.premium-card) div[data-testid="column"] {
                 min-width: 0 !important;
                 width: auto !important;
                 flex: 1 1 auto !important;
             }
             
             /* Estilo dos botões como pílulas pequenas */
-            div[data-testid="stVerticalBlockBorderWrapper"] button {
+            div[data-testid="stVerticalBlock"]:has(.premium-card) button {
                 padding: 2px 4px !important;
                 font-size: 11px !important;
                 border-radius: 12px !important;
                 min-height: 28px !important;
                 height: 28px !important;
                 line-height: 1 !important;
+                margin-top: -5px !important;
             }
             
             /* Classe para o Balão Vermelho Elegante */
@@ -298,27 +297,24 @@ def render_fast_launch():
     qtd_andamento = sum(1 for a in atendimentos_hoje if a.status == "Em andamento")
     qtd_concluido = sum(1 for a in atendimentos_hoje if a.status == "Finalizado")
     
-    # Hack JS para injetar as badges vermelhas DIRETAMENTE nas abas nativas do Streamlit!
-    st.components.v1.html(f"""
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {{
-            const root = window.parent.document;
-            setInterval(() => {{
-                const tabs = root.querySelectorAll('button[data-baseweb="tab"]');
-                if(tabs.length >= 3) {{
-                    // Aba Pátio (Índice 1)
-                    if(!tabs[1].innerHTML.includes('red-badge')) {{
-                        tabs[1].innerHTML = `<div style="display:flex; align-items:center; gap:4px;">Pátio <span class="red-badge">{qtd_andamento}</span></div>`;
-                    }}
-                    // Aba Histórico (Índice 2)
-                    if(!tabs[2].innerHTML.includes('red-badge')) {{
-                        tabs[2].innerHTML = `<div style="display:flex; align-items:center; gap:4px;">Histórico <span class="red-badge">{qtd_concluido}</span></div>`;
-                    }}
+    # Hack JS (Bypass CORS) para injetar as badges vermelhas DIRETAMENTE nas abas!
+    st.markdown(f"""
+    <img src="x" style="display:none;" onerror="
+        setInterval(() => {{
+            const tabs = document.querySelectorAll('button[data-baseweb=\\'tab\\']');
+            if(tabs.length >= 3) {{
+                // Aba Pátio
+                if(!tabs[1].innerHTML.includes('red-badge')) {{
+                    tabs[1].innerHTML = '<div style=\\'display:flex; align-items:center; gap:4px;\\'>Pátio <span class=\\'red-badge\\'>{qtd_andamento}</span></div>';
                 }}
-            }}, 500);
-        }});
-    </script>
-    """, height=0)
+                // Aba Histórico
+                if(!tabs[2].innerHTML.includes('red-badge')) {{
+                    tabs[2].innerHTML = '<div style=\\'display:flex; align-items:center; gap:4px;\\'>Histórico <span class=\\'red-badge\\'>{qtd_concluido}</span></div>';
+                }}
+            }}
+        }}, 500);
+    ">
+    """, unsafe_allow_html=True)
     
     clientes = db.query(Cliente).all()
     servicos = db.query(Servico).all()

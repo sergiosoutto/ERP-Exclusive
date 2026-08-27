@@ -209,40 +209,33 @@ def inject_custom_css():
 
 inject_custom_css()
 
-# Hack JS DEFINITIVO para recolhimento da sidebar com múltiplos gatilhos e via Python Rerun
-st.components.v1.html("""
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const root = window.parent;
+# Hack JS DEFINITIVO (Bypass CORS) via imagem escondida
+st.markdown("""
+<img src="x" style="display:none;" onerror="
+    if (!window.mySidebarJS) {
+        window.mySidebarJS = true;
         
         function closeSidebar() {
-            if (root.innerWidth < 992) {
-                const closeBtn = root.document.querySelector('[data-testid="baseButton-header"]');
+            if (window.innerWidth < 992) {
+                const closeBtn = document.querySelector('[data-testid=\\'baseButton-header\\']');
                 if (closeBtn) closeBtn.click();
             }
         }
-
-        // Se o iframe carregar e houver a flag, fecha (acionado pelo rerun do Python)
+        
+        // Fecha no carregamento
         closeSidebar();
-
-        // Gatilho 1: Mensagens do Streamlit Component (option_menu)
-        root.addEventListener('message', function(e) {
-            if (e.data && e.data.type === 'streamlit:setComponentValue') {
-                setTimeout(closeSidebar, 50);
-            }
-        });
-
-        // Gatilho 2: Monitoramento de clique dentro de qualquer Iframe
+        
+        // Monitora cliques em Iframes (option_menu)
         setInterval(function() {
-            const active = root.document.activeElement;
+            const active = document.activeElement;
             if (active && active.tagName === 'IFRAME') {
                 closeSidebar();
-                active.blur(); // Tira o foco para não entrar em loop
+                active.blur();
             }
         }, 500);
-    });
-</script>
-""", height=0)
+    }
+">
+""", unsafe_allow_html=True)
 
 # ==========================================
 # 3. Gestão de Estado da Sessão (SPA Feeling)
