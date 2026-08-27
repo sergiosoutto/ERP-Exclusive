@@ -63,6 +63,16 @@ def inject_custom_css():
         [data-testid="stSidebar"] hr {
             border-color: rgba(255, 255, 255, 0.1) !important;
         }
+        
+        /* Consertar contraste do Filtro de Data na Sidebar */
+        [data-testid="stSidebar"] div[data-baseweb="input"] {
+            background-color: white !important;
+        }
+        [data-testid="stSidebar"] div[data-baseweb="input"] input {
+            color: #1D1D1F !important;
+            -webkit-text-fill-color: #1D1D1F !important;
+        }
+
         /* Botões na sidebar transparentes com borda clara */
         [data-testid="stSidebar"] .stButton > button {
             background-color: transparent !important;
@@ -190,23 +200,22 @@ def inject_custom_css():
 
 inject_custom_css()
 
-# Auto recolher menu lateral após clique JS script. Tentando acessar o DOM via JS de forma robusta.
+# Hack JS focado em detectar clique no iframe do menu lateral e fechar no mobile
 st.components.v1.html("""
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        const root = window.parent.document;
-        // Encontra o container do option_menu e escuta cliques
-        root.addEventListener('click', function(e) {
-            // Se o alvo do clique foi um nav-link (opção do menu)
-            if (e.target.closest('.nav-link')) {
-                // Checar se a tela é pequena (mobile)
+        // Intervalo para verificar a interação dentro do iframe
+        setInterval(function() {
+            const root = window.parent.document;
+            if (root.activeElement && root.activeElement.tagName === 'IFRAME') {
+                // Se um iframe estiver em foco no mobile, fechamos o menu
                 if (window.parent.innerWidth < 992) {
-                    // Clicar no botão de fechar a sidebar
                     const closeBtn = root.querySelector('[data-testid="baseButton-header"]');
                     if (closeBtn) closeBtn.click();
+                    root.activeElement.blur(); // Tira o foco para evitar loop
                 }
             }
-        });
+        }, 500);
     });
 </script>
 """, height=0)
@@ -228,7 +237,6 @@ def render_login():
     st.markdown("""
         <style>
             .stApp { background-color: var(--crivo-blue) !important; }
-            /* Ajustar textos do login para visibilidade */
             .premium-card { background-color: rgba(255, 255, 255, 0.95); }
         </style>
     """, unsafe_allow_html=True)
@@ -266,27 +274,20 @@ def main():
 
     # Sidebar
     with st.sidebar:
-        try:
-            st.image("assets/logo.png", use_container_width=True)
-        except:
-            st.markdown(f"<h2 style='text-align: center; color: white; font-size: 22px;'>CRIVO</h2>", unsafe_allow_html=True)
+        # Imagem com width fixo para ficar menor e subir o menu
+        col_img1, col_img2, col_img3 = st.columns([1, 4, 1])
+        with col_img2:
+            try:
+                st.image("assets/logo.png", use_container_width=True)
+            except:
+                st.markdown(f"<h2 style='text-align: center; color: white; font-size: 22px;'>CRIVO</h2>", unsafe_allow_html=True)
             
-        st.markdown(f"<p style='text-align: center; font-size: 12px; color: rgba(255,255,255,0.7);'>Acesso: <b>{st.session_state['user_role'].upper()}</b></p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align: center; font-size: 11px; margin-top:-10px; color: rgba(255,255,255,0.7);'>Acesso: <b>{st.session_state['user_role'].upper()}</b></p>", unsafe_allow_html=True)
+        st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
         
-        # Botão sair escuro/border
-        if st.button("Sair", use_container_width=True):
-            st.session_state['logged_in'] = False
-            st.session_state['user_role'] = None
-            st.rerun()
-            
-        st.markdown("---")
-        
-        # Filtros Globais Persistentes
-        st.markdown("<p style='font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 5px;'>Filtro Global</p>", unsafe_allow_html=True)
-        # Hack para manter input branco
-        st.markdown("""<style>div[data-baseweb="input"] input { color: var(--text-main) !important; }</style>""", unsafe_allow_html=True)
+        st.markdown("<p style='font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 5px;'>Filtro Global</p>", unsafe_allow_html=True)
         global_date = st.date_input("Data de Referência", label_visibility="collapsed")
-        st.markdown("---")
+        st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
         
         # Menu de Navegação (Ícones explicativos)
         menu_options = [
@@ -307,18 +308,25 @@ def main():
             "cloud-arrow-up", "bar-chart-line"
         ]
         
+        # Tirar bordas extras embutidas no frame
         selected = option_menu(
             menu_title=None,
             options=menu_options,
             icons=icons,
             default_index=0,
             styles={
-                "container": {"padding": "0!important", "background-color": "#001C25"},
+                "container": {"padding": "0!important", "background-color": "#001C25", "border": "none", "border-radius": "0"},
                 "icon": {"color": "#C5A059", "font-size": "18px"}, 
                 "nav-link": {"font-size": "14px", "text-align": "left", "margin":"0px", "--hover-color": "rgba(255,255,255,0.1)", "color": "rgba(255,255,255,0.85)"},
                 "nav-link-selected": {"background-color": "#C5A059", "color": "white", "font-weight": "normal"},
             }
         )
+        
+        st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
+        if st.button("Sair", use_container_width=True):
+            st.session_state['logged_in'] = False
+            st.session_state['user_role'] = None
+            st.rerun()
 
     # Injeta CSS dinâmico para centralizar apenas se for Fluxo do Dia
     if selected == "Fluxo do dia":

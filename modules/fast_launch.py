@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from db_config import get_db, Cliente, Servico, Produto, Atendimento, ItemAtendimento, FormaPagamento, ServicoInsumo
 from datetime import datetime, timedelta, timezone
 import unicodedata
@@ -37,8 +38,7 @@ def gold_icon(icon_name):
         "lightning": '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>',
         "check": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>',
         "clock": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
-        "edit": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>',
-        "trash": '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>',
+        "chart": '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C5A059" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:6px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>'
     }
     return icons.get(icon_name, "")
 
@@ -70,27 +70,69 @@ def dialog_novo_cliente():
             st.success(f"Cliente cadastrado com sucesso!")
             st.rerun()
 
-
-@dialog_decorator("Gerenciar OS")
-def dialog_checkout(at_id):
+@dialog_decorator("Confirmar Exclusão")
+def dialog_excluir_os(at_id):
+    st.warning("Tem certeza que deseja excluir esta OS permanentemente?")
     db = next(get_db())
-    at = db.query(Atendimento).filter(Atendimento.id == at_id).first()
-    if not at: return
-    
-    st.write(f"Gerenciando OS: **{at.codigo}**")
-    
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
-        if st.button(f"{gold_icon('edit')} Editar Itens (Apenas Admin)", key=f"edit_os_{at.id}", use_container_width=True):
-            st.warning("Função de edição avançada na aba Histórico.")
-    with col_btn2:
-        if st.button(f"{gold_icon('trash')} Excluir OS", key=f"del_os_{at.id}", use_container_width=True):
+    if st.button("Excluir Permanentemente", type="primary", use_container_width=True):
+        at = db.query(Atendimento).filter(Atendimento.id == at_id).first()
+        if at:
             db.delete(at)
             db.commit()
             st.session_state['success_msg'] = f"OS excluída."
             st.rerun()
 
+@dialog_decorator("Editar OS")
+def dialog_editar_os(at_id):
+    db = next(get_db())
+    at = db.query(Atendimento).filter(Atendimento.id == at_id).first()
+    if not at: return
+    
+    st.write(f"Editando OS: **{at.codigo}**")
+    
+    # Mostrar Itens atuais
+    itens = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == at.id).all()
+    if itens:
+        st.markdown("#### Itens Lançados:")
+        for i in itens:
+            s = db.query(Servico).filter(Servico.id == i.referencia_id).first()
+            n = s.nome if s else "Desconhecido"
+            st.write(f"- {n} (R$ {i.valor_cobrado:.2f})")
+    
     st.markdown("---")
+    st.markdown("#### Adicionar Mais Serviços")
+    servicos = db.query(Servico).all()
+    servico_nomes = {s.nome: s for s in servicos}
+    
+    selecionados = st.multiselect("Selecione serviços adicionais", list(servico_nomes.keys()))
+    
+    novos_valores = {}
+    total_adicional = 0.0
+    for sel in selecionados:
+        s_obj = servico_nomes[sel]
+        val = st.number_input(f"Valor para {sel} (R$)", value=s_obj.preco_padrao, min_value=0.0, key=f"add_{sel}")
+        novos_valores[s_obj.id] = val
+        total_adicional += val
+        
+    st.write(f"Total Adicional: **R$ {total_adicional:.2f}**")
+    
+    if st.button("Confirmar Edição", type="primary", use_container_width=True):
+        for s_id, v in novos_valores.items():
+            novo_item = ItemAtendimento(atendimento_id=at.id, tipo="Serviço", referencia_id=s_id, valor_cobrado=v)
+            db.add(novo_item)
+            
+        at.valor_total += total_adicional
+        db.commit()
+        st.session_state['success_msg'] = "OS atualizada com sucesso!"
+        st.rerun()
+
+@dialog_decorator("Concluir OS")
+def dialog_checkout(at_id):
+    db = next(get_db())
+    at = db.query(Atendimento).filter(Atendimento.id == at_id).first()
+    if not at: return
+    
+    st.write(f"Finalizando OS: **{at.codigo}**")
     
     # Formas de pagamento do DB
     fps = db.query(FormaPagamento).all()
@@ -175,16 +217,19 @@ def render_fast_launch():
     atendimentos_hoje = db.query(Atendimento).filter(Atendimento.data_criacao >= hoje.strftime("%Y-%m-%d")).all()
     qtd_andamento = sum(1 for a in atendimentos_hoje if a.status == "Em andamento")
     qtd_concluido = sum(1 for a in atendimentos_hoje if a.status == "Finalizado")
+    total_recebido = sum(a.valor_total for a in atendimentos_hoje if a.status == "Finalizado")
     
-    c1, c2, c3 = st.columns([2, 1, 1], vertical_alignment="center")
-    with c1:
-        st.markdown(f"<h2 style='margin:0; padding:0; font-size: 24px;'>{gold_icon('lightning')} PDV</h2>", unsafe_allow_html=True)
-    with c2:
-        st.markdown(f"<div class='premium-card' style='padding:8px!important; text-align:center;'><span style='font-size:12px; color:var(--warning);'>Andamento</span><br><b>{qtd_andamento}</b></div>", unsafe_allow_html=True)
-    with c3:
-        st.markdown(f"<div class='premium-card' style='padding:8px!important; text-align:center;'><span style='font-size:12px; color:var(--success);'>Concluído</span><br><b>{qtd_concluido}</b></div>", unsafe_allow_html=True)
-        
-    st.markdown("<br>", unsafe_allow_html=True)
+    # Header em linha fina conforme pedido
+    st.markdown(f"""
+    <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;'>
+        <h3 style='margin:0; font-size:18px;'>{gold_icon('lightning')} PDV</h3>
+        <p style='margin:0; font-size:13px; color:var(--text-sec);'>
+            ⏳ Em andamento: <b>{qtd_andamento}</b> &nbsp;|&nbsp; 
+            ✅ Concluído: <b>{qtd_concluido}</b> &nbsp;|&nbsp; 
+            💰 Recebido: <b>R$ {total_recebido:,.2f}</b>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
     clientes = db.query(Cliente).all()
     servicos = db.query(Servico).all()
@@ -213,26 +258,24 @@ def render_fast_launch():
             
             st.markdown("<hr style='margin:16px 0;'>", unsafe_allow_html=True)
             
-            st.markdown(f"<label style='font-size:13px; font-weight:500;'>{gold_icon('service')} Serviço</label>", unsafe_allow_html=True)
-            servico_opcoes = [s.nome for s in servicos]
-            item_selecionado = st.selectbox("Serviço Principal", servico_opcoes if servico_opcoes else ["Nenhum serviço"], label_visibility="collapsed")
+            st.markdown(f"<label style='font-size:13px; font-weight:500;'>{gold_icon('service')} Serviço Principal</label>", unsafe_allow_html=True)
+            servico_opcoes = {s.nome: s for s in servicos}
+            item_selecionado = st.selectbox("Serviço Principal", list(servico_opcoes.keys()) if servico_opcoes else ["Nenhum serviço"], label_visibility="collapsed")
             
             valor_sugerido = 0.0
             if item_selecionado and item_selecionado != "Nenhum serviço":
-                serv = next((s for s in servicos if s.nome == item_selecionado), None)
-                valor_sugerido = serv.preco_padrao if serv else 0.0
+                valor_sugerido = servico_opcoes[item_selecionado].preco_padrao
                 
             valor_final = st.number_input("Valor Cobrado (R$)", value=valor_sugerido, min_value=0.0)
             
-            # Adicional checkbox
-            mais_servico = st.checkbox("Adicionar mais um serviço?")
-            item_selecionado_2 = None
-            valor_final_2 = 0.0
+            # Adicional multiselect
+            mais_servico = st.checkbox("Adicionar múltiplos serviços?")
+            servicos_extra = {}
             if mais_servico:
-                item_selecionado_2 = st.selectbox("2º Serviço", servico_opcoes if servico_opcoes else ["Nenhum serviço"], key="serv2")
-                if item_selecionado_2 and item_selecionado_2 != "Nenhum serviço":
-                    serv2 = next((s for s in servicos if s.nome == item_selecionado_2), None)
-                    valor_final_2 = st.number_input("Valor 2º Serviço (R$)", value=serv2.preco_padrao if serv2 else 0.0, min_value=0.0)
+                selecionados_extra = st.multiselect("Serviços Adicionais", list(servico_opcoes.keys()))
+                for sel in selecionados_extra:
+                    v = st.number_input(f"Valor {sel} (R$)", value=servico_opcoes[sel].preco_padrao, min_value=0.0)
+                    servicos_extra[servico_opcoes[sel].id] = v
             
             st.markdown("<br>", unsafe_allow_html=True)
             
@@ -242,7 +285,7 @@ def render_fast_launch():
                     cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
                     
                     codigo_seq = f"OS-{db.query(Atendimento).count()+1:04d}"
-                    total_atendimento = valor_final + valor_final_2
+                    total_atendimento = valor_final + sum(servicos_extra.values())
                     
                     novo_at = Atendimento(
                         codigo=codigo_seq, cliente_id=cliente_ref.id, status="Em andamento",
@@ -251,17 +294,14 @@ def render_fast_launch():
                     db.add(novo_at)
                     db.flush()
                     
-                    serv_ref = db.query(Servico).filter(Servico.nome == item_selecionado).first()
-                    if serv_ref:
-                        db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=serv_ref.id, valor_cobrado=valor_final))
+                    if item_selecionado != "Nenhum serviço":
+                        db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=servico_opcoes[item_selecionado].id, valor_cobrado=valor_final))
                         
-                    if mais_servico and item_selecionado_2:
-                        serv_ref_2 = db.query(Servico).filter(Servico.nome == item_selecionado_2).first()
-                        if serv_ref_2:
-                            db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=serv_ref_2.id, valor_cobrado=valor_final_2))
+                    for s_id, v in servicos_extra.items():
+                        db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=s_id, valor_cobrado=v))
                         
                     db.commit()
-                    st.session_state['success_msg'] = f"Serviço enviado ao Pátio!"
+                    st.session_state['success_msg'] = f"OS {codigo_seq} enviada ao Pátio!"
                     st.rerun()
                 else:
                     st.error("Selecione um cliente.")
@@ -285,17 +325,18 @@ def render_fast_launch():
                 
                 with st.container(border=True):
                     # Cliente em destaque, OS minúscula
-                    st.markdown(f"<h4 style='margin:0;'>{cli_nome} <span style='font-size:10px; font-weight:normal; color:var(--text-sec);'>({at.codigo})</span></h4>", unsafe_allow_html=True)
-                    st.markdown(f"*{carro} | Placa: {placa}*")
+                    st.markdown(f"<h4 style='margin:0;'>{cli_nome} <span style='font-size:11px; font-weight:normal; color:var(--text-sec);'>({at.codigo})</span></h4>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='margin:0; font-size:14px;'>*{carro} | Placa: {placa}*</p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='margin:4px 0 10px 0; font-size:13px;'>{gold_icon('clock')} Início: {dt_criacao.strftime('%H:%M')} (⏳ **{tempo_decorrido}**) &nbsp;|&nbsp; <b>Total: R$ {at.valor_total:.2f}</b></p>", unsafe_allow_html=True)
                     
-                    c1, c2 = st.columns([1, 1])
-                    with c1:
-                        st.markdown(f"{gold_icon('clock')} Início: {dt_criacao.strftime('%H:%M')} (⏳ **{tempo_decorrido}**)", unsafe_allow_html=True)
-                    with c2:
-                        st.markdown(f"**Total: R$ {at.valor_total:.2f}**")
-                        
-                    if st.button("Concluir Serviço", key=f"fin_{at.id}", type="primary", use_container_width=True):
-                        dialog_checkout(at.id)
+                    # 3 Botões Inline: Editar, Excluir, Concluir
+                    c_edit, c_del, c_fin = st.columns([1, 1, 1.5])
+                    with c_edit:
+                        if st.button("Editar", key=f"btn_ed_{at.id}", use_container_width=True): dialog_editar_os(at.id)
+                    with c_del:
+                        if st.button("Excluir", key=f"btn_dl_{at.id}", use_container_width=True): dialog_excluir_os(at.id)
+                    with c_fin:
+                        if st.button("Concluir", key=f"btn_fn_{at.id}", type="primary", use_container_width=True): dialog_checkout(at.id)
         else:
             st.info("Pátio vazio.")
 
@@ -312,9 +353,7 @@ def render_fast_launch():
                     st.markdown(f"{gold_icon('check')} *Finalizado: {datetime.fromisoformat(at.data_conclusao).strftime('%d/%m %H:%M') if at.data_conclusao else '-'}*", unsafe_allow_html=True)
                     st.markdown(f"**Pagamento:** {at.forma_pagamento} - R$ {at.valor_total:.2f}")
                     if st.button("Excluir (Admin)", key=f"hist_del_{at.id}"):
-                        db.delete(at)
-                        db.commit()
-                        st.rerun()
+                        dialog_excluir_os(at.id)
         else:
             st.info("Nenhum concluído hoje.")
 
@@ -322,7 +361,7 @@ def render_fast_launch():
     # ABA 4: RESUMO
     # ==========================================
     with tab4:
-        st.markdown(f"### {gold_icon('chart')} Resumo Diário", unsafe_allow_html=True)
+        st.markdown(f"### {gold_icon('chart')} Resumo Diário Expandido", unsafe_allow_html=True)
         hoje_str = hoje.strftime("%Y-%m-%d")
         total_dia = db.query(Atendimento).filter(Atendimento.data_criacao >= hoje_str, Atendimento.status == "Finalizado").all()
         
@@ -336,4 +375,21 @@ def render_fast_launch():
             st.markdown("<div class='premium-card' style='text-align:center;'><span style='font-size:14px;'>Ticket Médio</span><br><b style='font-size:22px; color:var(--accent);'>R$ " + f"{ticket_medio:,.2f}" + "</b></div>", unsafe_allow_html=True)
             
         st.markdown("---")
-        st.write(f"Total de Atendimentos Finalizados: **{len(total_dia)}**")
+        
+        # Tabela Detalhada
+        st.markdown("#### Últimas Vendas do Dia")
+        if total_dia:
+            dados_tabela = []
+            for a in total_dia:
+                cliente = db.query(Cliente).filter(Cliente.id == a.cliente_id).first()
+                dados_tabela.append({
+                    "OS": a.codigo,
+                    "Cliente": cliente.nome if cliente else "N/I",
+                    "Veículo": cliente.modelo_veiculo if cliente else "N/I",
+                    "Pagamento": a.forma_pagamento,
+                    "Total (R$)": float(a.valor_total)
+                })
+            df = pd.DataFrame(dados_tabela)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.write("Sem dados para exibir na tabela.")
