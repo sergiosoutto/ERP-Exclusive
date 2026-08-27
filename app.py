@@ -57,28 +57,9 @@ def inject_custom_css():
         [data-testid="stSidebar"] {
             background-color: var(--crivo-blue) !important;
         }
-        [data-testid="stSidebar"] * {
-            color: rgba(255, 255, 255, 0.9) !important;
-        }
-        /* Forçar Logo Menor no Mobile e Desktop */
-        [data-testid="stSidebar"] img {
-            max-width: 150px !important;
-            margin: 0 auto !important;
-            display: block !important;
-        }
-
-        /* Consertar contraste do Filtro de Data na Sidebar - Força bruta */
-        [data-testid="stSidebar"] div[data-baseweb="input"] * {
-            background-color: #001C25 !important;
-            color: #FFFFFF !important;
-            -webkit-text-fill-color: #FFFFFF !important;
-            border-color: rgba(255,255,255,0.2) !important;
-        }
-        
-        /* Borda na caixa do menu (Iframe) */
-        [data-testid="stSidebar"] iframe {
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-            border-radius: 8px !important;
+        /* Remover bordas de iframes para o option_menu ficar limpo */
+        iframe {
+            border: none !important;
             outline: none !important;
         }
 
@@ -97,7 +78,7 @@ def inject_custom_css():
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
 
-        /* Estilo dos Cartões (Cards) - Glassmorphism Premium Claro */
+        /* Estilo dos Cartões (Cards) */
         .premium-card {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
@@ -109,16 +90,11 @@ def inject_custom_css():
             margin-bottom: 8px !important;
             transition: all 0.3s ease;
         }
-        .premium-card:hover {
-            box-shadow: 0 8px 32px rgba(0,0,0,0.04);
-            border-color: rgba(0, 0, 0, 0.12);
-        }
 
         /* Ajustes de Títulos e Textos */
         h1, h2, h3, h4, h5, h6 {
             color: var(--text-main) !important;
             font-weight: 500 !important;
-            letter-spacing: -0.02em !important;
             margin-top: 4px !important;
             margin-bottom: 4px !important;
         }
@@ -131,86 +107,36 @@ def inject_custom_css():
             font-weight: 500;
         }
 
-        /* Ajuste do divisor */
-        hr {
-            border-color: var(--border-color) !important;
-            margin-top: 16px !important;
-            margin-bottom: 16px !important;
-        }
-
         /* Reduzir espaçamento vertical geral dos blocos do Streamlit */
         div[data-testid="stVerticalBlock"] {
             gap: 0.75rem !important;
         }
 
-        /* Ajuste do botão para formato reduzido, compacto e com TATO (Física) */
+        /* Ajuste do botão genérico */
         .stButton>button {
             border-radius: 8px !important;
             font-weight: 500 !important;
             font-size: 13px !important;
             padding: 6px 16px !important;
-            white-space: nowrap !important;
             background-color: #FFFFFF !important;
             color: var(--text-main) !important;
             border: 1px solid var(--border-color) !important;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
-            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease !important;
-        }
-        .stButton>button:hover {
-            border-color: rgba(0,0,0,0.15) !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
-            color: var(--text-main) !important;
-        }
-        .stButton>button:active {
-            transform: scale(0.96) !important; /* Física magnética/clique */
-            box-shadow: 0 0px 0px rgba(0,0,0,0) !important;
         }
 
-        /* Botão Primário (Gold) - Contraste exigido pela skill */
+        /* Botão Primário (Gold) */
         button[kind="primary"] {
             background-color: var(--accent) !important;
             border-color: var(--accent) !important;
             color: #FFFFFF !important; 
         }
-        button[kind="primary"]:hover {
-            background-color: #D4B06A !important;
-            color: #FFFFFF !important;
-        }
         button[kind="primary"] p, button[kind="primary"] span {
             color: #FFFFFF !important;
-            font-weight: 600 !important;
         }
 
-        /* Melhorar contraste das caixas de preenchimento (inputs e selectbox) para Light Mode */
-        div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="textarea"] {
-            border: 1px solid rgba(0,0,0,0.1) !important;
-            border-radius: 8px !important;
-            background-color: #FFFFFF !important;
-            box-shadow: inset 0 1px 2px rgba(0,0,0,0.01) !important;
-        }
-        div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within {
-            border-color: var(--accent) !important;
-            box-shadow: 0 0 0 1px var(--accent) !important;
-        }
-        div[data-baseweb="input"] input, div[data-baseweb="select"] div, div[data-baseweb="textarea"] textarea {
-            color: var(--text-main) !important;
-        }
-
-        /* Modais/Dialogs do Streamlit adaptados para Clean Apple */
-        div[role="dialog"] {
-            background-color: #FFFFFF !important;
-            color: var(--text-main) !important;
-            border: 1px solid var(--border-color) !important;
-            border-radius: 16px !important;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
-        }
     </style>
     """, unsafe_allow_html=True)
 
 inject_custom_css()
-
-# Hack JS DEFINITIVO (Bypass CORS) via imagem escondida - MINIFICADO
-st.markdown("""<img src="x" style="display:none;" onerror="if(!window.mySidebarJS){window.mySidebarJS=true;function closeSidebar(){if(window.innerWidth<992){const closeBtn=document.querySelector('[data-testid=\\'baseButton-header\\']');if(closeBtn)closeBtn.click();}}closeSidebar();setInterval(function(){const active=document.activeElement;if(active&&active.tagName==='IFRAME'){closeSidebar();active.blur();}},500);}">""", unsafe_allow_html=True)
 
 # ==========================================
 # 3. Gestão de Estado da Sessão (SPA Feeling)
@@ -265,19 +191,9 @@ def main():
 
     # Sidebar
     with st.sidebar:
-        # Forçar Logo Menor no Mobile e Desktop
-        st.markdown("""
-        <style>
-            [data-testid="stSidebar"] img {
-                max-width: 150px !important;
-                margin: 0 auto !important;
-                display: block !important;
-            }
-        </style>
-        """, unsafe_allow_html=True)
-        
         try:
-            st.image("assets/logo.png")
+            # Logo maior, usando parâmetro nativo do Streamlit ao invés de CSS
+            st.image("assets/logo.png", width=150)
         except:
             st.markdown(f"<h2 style='text-align: center; color: white; font-size: 22px;'>CRIVO</h2>", unsafe_allow_html=True)
             

@@ -232,51 +232,24 @@ def dialog_checkout(at_id):
         st.rerun()
 
 def render_fast_launch():
-    # CSS Customizado para espremer MUITO as caixas de OS e transformar botões em pílulas
+    # CSS Customizado mínimo e seguro
     st.markdown("""
         <style>
-            /* Reduzir o gap do Vertical Block que segura os cards */
-            div[data-testid="stVerticalBlock"]:has(.premium-card) {
-                gap: 0.1rem !important;
+            div[data-testid="stVerticalBlockBorderWrapper"] > div {
+                padding: 6px 10px !important;
+                gap: 2px !important;
+            }
+            div[data-testid="stVerticalBlockBorderWrapper"] {
                 margin-bottom: -10px !important;
             }
             
-            /* Forçar botões inline (lado a lado) dentro do container do OS */
-            div[data-testid="stVerticalBlock"]:has(.premium-card) div[data-testid="stHorizontalBlock"] {
-                flex-direction: row !important; /* Vence o @media query do mobile */
-                flex-wrap: nowrap !important;
-                gap: 4px !important;
-                display: flex !important;
-            }
-            div[data-testid="stVerticalBlock"]:has(.premium-card) div[data-testid="column"] {
-                min-width: 0 !important;
-                width: auto !important;
-                flex: 1 1 auto !important;
-            }
-            
-            /* Estilo dos botões como pílulas pequenas */
-            div[data-testid="stVerticalBlock"]:has(.premium-card) button {
-                padding: 2px 4px !important;
+            /* Estilo dos botões nativos nas listagens */
+            div[data-testid="stVerticalBlockBorderWrapper"] button {
                 font-size: 11px !important;
                 border-radius: 12px !important;
                 min-height: 28px !important;
                 height: 28px !important;
                 line-height: 1 !important;
-                margin-top: -5px !important;
-            }
-            
-            /* Classe para o Balão Vermelho Elegante */
-            .red-badge {
-                background-color: #FF3B30;
-                color: white;
-                font-size: 11px;
-                font-weight: 600;
-                border-radius: 12px;
-                padding: 2px 6px;
-                margin-left: 6px;
-                display: inline-block;
-                vertical-align: middle;
-                box-shadow: 0 2px 4px rgba(255, 59, 48, 0.3);
             }
         </style>
     """, unsafe_allow_html=True)
@@ -297,14 +270,14 @@ def render_fast_launch():
     qtd_andamento = sum(1 for a in atendimentos_hoje if a.status == "Em andamento")
     qtd_concluido = sum(1 for a in atendimentos_hoje if a.status == "Finalizado")
     
-    # Hack JS (Bypass CORS) para injetar as badges vermelhas DIRETAMENTE nas abas!
-    st.markdown(f"""<img src="x" style="display:none;" onerror="setInterval(()=>{{const tabs=document.querySelectorAll('button[data-baseweb=\\'tab\\']');if(tabs.length>=3){{if(!tabs[1].innerHTML.includes('red-badge')){{tabs[1].innerHTML='<div style=\\'display:flex; align-items:center; gap:4px;\\'>Pátio <span class=\\'red-badge\\'>{qtd_andamento}</span></div>';}}if(!tabs[2].innerHTML.includes('red-badge')){{tabs[2].innerHTML='<div style=\\'display:flex; align-items:center; gap:4px;\\'>Histórico <span class=\\'red-badge\\'>{qtd_concluido}</span></div>';}}}}}},500);">""", unsafe_allow_html=True)
-    
     clientes = db.query(Cliente).all()
     servicos = db.query(Servico).all()
     
-    # Abas Limpas, o JS coloca as badges
-    tab1, tab2, tab3, tab4 = st.tabs(["Novo", "Pátio", "Histórico", "Resumo"])
+    # Abas usando marcação nativa e segura (Emojis e contadores visíveis sempre)
+    aba_patio = f"Pátio 🔴 {qtd_andamento}" if qtd_andamento > 0 else "Pátio"
+    aba_hist = f"Histórico 🔴 {qtd_concluido}" if qtd_concluido > 0 else "Histórico"
+    
+    tab1, tab2, tab3, tab4 = st.tabs(["Novo", aba_patio, aba_hist, "Resumo"])
     
     # ==========================================
     # ABA 1: NOVO ATENDIMENTO
