@@ -209,33 +209,8 @@ def inject_custom_css():
 
 inject_custom_css()
 
-# Hack JS DEFINITIVO (Bypass CORS) via imagem escondida
-st.markdown("""
-<img src="x" style="display:none;" onerror="
-    if (!window.mySidebarJS) {
-        window.mySidebarJS = true;
-        
-        function closeSidebar() {
-            if (window.innerWidth < 992) {
-                const closeBtn = document.querySelector('[data-testid=\\'baseButton-header\\']');
-                if (closeBtn) closeBtn.click();
-            }
-        }
-        
-        // Fecha no carregamento
-        closeSidebar();
-        
-        // Monitora cliques em Iframes (option_menu)
-        setInterval(function() {
-            const active = document.activeElement;
-            if (active && active.tagName === 'IFRAME') {
-                closeSidebar();
-                active.blur();
-            }
-        }, 500);
-    }
-">
-""", unsafe_allow_html=True)
+# Hack JS DEFINITIVO (Bypass CORS) via imagem escondida - MINIFICADO
+st.markdown("""<img src="x" style="display:none;" onerror="if(!window.mySidebarJS){window.mySidebarJS=true;function closeSidebar(){if(window.innerWidth<992){const closeBtn=document.querySelector('[data-testid=\\'baseButton-header\\']');if(closeBtn)closeBtn.click();}}closeSidebar();setInterval(function(){const active=document.activeElement;if(active&&active.tagName==='IFRAME'){closeSidebar();active.blur();}},500);}">""", unsafe_allow_html=True)
 
 # ==========================================
 # 3. Gestão de Estado da Sessão (SPA Feeling)

@@ -298,23 +298,7 @@ def render_fast_launch():
     qtd_concluido = sum(1 for a in atendimentos_hoje if a.status == "Finalizado")
     
     # Hack JS (Bypass CORS) para injetar as badges vermelhas DIRETAMENTE nas abas!
-    st.markdown(f"""
-    <img src="x" style="display:none;" onerror="
-        setInterval(() => {{
-            const tabs = document.querySelectorAll('button[data-baseweb=\\'tab\\']');
-            if(tabs.length >= 3) {{
-                // Aba Pátio
-                if(!tabs[1].innerHTML.includes('red-badge')) {{
-                    tabs[1].innerHTML = '<div style=\\'display:flex; align-items:center; gap:4px;\\'>Pátio <span class=\\'red-badge\\'>{qtd_andamento}</span></div>';
-                }}
-                // Aba Histórico
-                if(!tabs[2].innerHTML.includes('red-badge')) {{
-                    tabs[2].innerHTML = '<div style=\\'display:flex; align-items:center; gap:4px;\\'>Histórico <span class=\\'red-badge\\'>{qtd_concluido}</span></div>';
-                }}
-            }}
-        }}, 500);
-    ">
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<img src="x" style="display:none;" onerror="setInterval(()=>{{const tabs=document.querySelectorAll('button[data-baseweb=\\'tab\\']');if(tabs.length>=3){{if(!tabs[1].innerHTML.includes('red-badge')){{tabs[1].innerHTML='<div style=\\'display:flex; align-items:center; gap:4px;\\'>Pátio <span class=\\'red-badge\\'>{qtd_andamento}</span></div>';}}if(!tabs[2].innerHTML.includes('red-badge')){{tabs[2].innerHTML='<div style=\\'display:flex; align-items:center; gap:4px;\\'>Histórico <span class=\\'red-badge\\'>{qtd_concluido}</span></div>';}}}}}},500);">""", unsafe_allow_html=True)
     
     clientes = db.query(Cliente).all()
     servicos = db.query(Servico).all()
