@@ -297,7 +297,7 @@ def main():
 
     # Sidebar
     with st.sidebar:
-        # Injeta CSS para forçar a logo a ser pequena no mobile e centralizada
+        # Forçar Logo Menor no Mobile e Desktop
         st.markdown("""
         <style>
             [data-testid="stSidebar"] img {
@@ -357,6 +357,8 @@ def main():
             st.session_state['logged_in'] = False
             st.session_state['user_role'] = None
             st.rerun()
+
+    st.error("🚨 TESTE DE SINCRONIZAÇÃO: SE VOCÊ ESTÁ VENDO ESTA MENSAGEM, O GITHUB ATUALIZOU!")
 
     # Injeta CSS dinâmico para centralizar apenas se for Fluxo do Dia
     if selected == "Fluxo do dia":
