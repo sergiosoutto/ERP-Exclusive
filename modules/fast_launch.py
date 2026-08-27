@@ -374,7 +374,8 @@ def render_fast_launch():
                     st.markdown(f"<p style='margin:0; font-size:12px; color:var(--text-sec);'>*{carro} | Placa: {placa}*</p>", unsafe_allow_html=True)
                     st.markdown(f"<p style='margin:2px 0 6px 0; font-size:12px;'>{gold_icon('clock')} {dt_criacao.strftime('%H:%M')} (<b>{tempo_decorrido}</b>) &nbsp;|&nbsp; <b>R$ {at.valor_total:.2f}</b></p>", unsafe_allow_html=True)
                     
-                    c_edit, c_del, c_fin = st.columns([1, 1, 1.5])
+                    # Ações da OS - O Streamlit empilha nativamente no celular para não quebrar a tela
+                    c_edit, c_del, c_fin = st.columns(3)
                     with c_edit:
                         if st.button("Editar", key=f"btn_ed_{at.id}", use_container_width=True): dialog_editar_os(at.id)
                     with c_del:

@@ -57,7 +57,18 @@ def inject_custom_css():
         [data-testid="stSidebar"] {
             background-color: var(--crivo-blue) !important;
         }
-        /* Remover bordas de iframes para o option_menu ficar limpo */
+        /* Fundo escuro para o input de data na sidebar */
+        [data-testid="stSidebar"] div[data-baseweb="input"] {
+            background-color: rgba(0,0,0,0.2) !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            border-radius: 8px !important;
+        }
+        [data-testid="stSidebar"] div[data-baseweb="input"] input {
+            color: white !important;
+            -webkit-text-fill-color: white !important;
+        }
+        
+        /* Remover bordas de iframes para o option_menu ficar 100% limpo */
         iframe {
             border: none !important;
             outline: none !important;
@@ -192,8 +203,10 @@ def main():
     # Sidebar
     with st.sidebar:
         try:
-            # Logo maior, usando parâmetro nativo do Streamlit ao invés de CSS
-            st.image("assets/logo.png", width=150)
+            # Logo maior e centralizada via colunas nativas
+            col1, col2, col3 = st.columns([1, 4, 1])
+            with col2:
+                st.image("assets/logo.png", use_container_width=True)
         except:
             st.markdown(f"<h2 style='text-align: center; color: white; font-size: 22px;'>CRIVO</h2>", unsafe_allow_html=True)
             
@@ -229,7 +242,7 @@ def main():
             icons=icons,
             default_index=0,
             styles={
-                "container": {"padding": "0!important", "background-color": "#001C25", "border": "1px solid rgba(255,255,255,0.1)", "border-radius": "8px"},
+                "container": {"padding": "0!important", "background-color": "#001C25", "border": "none", "border-radius": "0px"},
                 "icon": {"color": "#C5A059", "font-size": "18px"}, 
                 "nav-link": {"font-size": "14px", "text-align": "left", "margin":"0px", "--hover-color": "rgba(255,255,255,0.1)", "color": "rgba(255,255,255,0.85)"},
                 "nav-link-selected": {"background-color": "#C5A059", "color": "white", "font-weight": "normal"},
