@@ -328,92 +328,64 @@ def render_fast_launch():
             cliente_opcoes = ["-- Selecione o Cliente --"]
             clientes = db.query(Cliente).all()
             for c in clientes:
-                c_nome_str = c.nome or "Desconhecido"
-                if termo in remover_acentos(c_nome_str.lower()) or (c.placa_veiculo and termo in remover_acentos(c.placa_veiculo.lower())):
-                    cliente_opcoes.append(f"{c_nome_str} ({c.placa_veiculo or 'Sem Placa'})")
-                    
-            cli_sel = st.selectbox("Selecione um Cliente", cliente_opcoes, index=0)
+                if c.codigo == "CLI-0000": continue
+                nome = remover_acentos(c.nome or "").lower()
+                placa = remover_acentos(c.placa_veiculo or "").lower()
+                if termo and (termo not in nome and termo not in placa): continue
+                cliente_opcoes.append(f"{c.codigo} | {c.nome or 'Desconhecido'} ({c.placa_veiculo or 'Sem Placa'})")
             
-            if cli_sel != "-- Selecione o Cliente --":
-                c_nome_sel = cli_sel.split(" (")[0]
-                cli_db = next((c for c in clientes if (c.nome or "Desconhecido") == c_nome_sel), None)
-                if cli_db:
-                    st.markdown("---")
-                    st.markdown(f"<div style='font-size:14px; font-weight:600; color:var(--text-main); margin-bottom:5px;'>O que será feito no veículo de {cli_db.nome}?</div>", unsafe_allow_html=True)
+            index_sel = 1 if len(cliente_opcoes) == 2 else 0
+            cliente_selecionado = st.selectbox("Cliente", cliente_opcoes, index=index_sel, label_visibility="collapsed")
+            
+            st.markdown("<hr style='margin:12px 0;'>", unsafe_allow_html=True)
+            
+            st.markdown(f"<label style='font-size:13px; font-weight:500;'>{gold_icon('service')} Serviço Principal</label>", unsafe_allow_html=True)
+            servicos = db.query(Servico).all()
+            servico_opcoes = {s.nome: s for s in servicos}
+            item_selecionado = st.selectbox("Serviço Principal", list(servico_opcoes.keys()) if servico_opcoes else ["Nenhum serviço"], label_visibility="collapsed")
+            
+            valor_sugerido = 0.0
+            if item_selecionado and item_selecionado != "Nenhum serviço":
+                valor_sugerido = servico_opcoes[item_selecionado].preco_padrao
+                
+            valor_final = st.number_input("Valor Cobrado (R$)", value=valor_sugerido, min_value=0.0)
+            
+            mais_servico = st.checkbox("Adicionar múltiplos serviços?")
+            servicos_extra = {}
+            if mais_servico:
+                selecionados_extra = st.multiselect("Serviços Adicionais", list(servico_opcoes.keys()))
+                for sel in selecionados_extra:
+                    v = st.number_input(f"Valor {sel} (R$)", value=servico_opcoes[sel].preco_padrao, min_value=0.0)
+                    servicos_extra[servico_opcoes[sel].id] = v
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            if st.button("Enviar para o Pátio", type="primary", use_container_width=True):
+                if cliente_selecionado and not cliente_selecionado.startswith("--"):
+                    cli_codigo = cliente_selecionado.split(" |")[0]
+                    cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
                     
-                    # Interface Ultra Rápida
-                    servicos = db.query(Servico).all()
-                    servico_opcoes = {"Nenhum serviço": None}
-                    for s in servicos: servico_opcoes[f"{s.nome} - R$ {s.preco_padrao:.2f}"] = s
+                    codigo_seq = f"OS-{db.query(Atendimento).count()+1:04d}"
+                    total_atendimento = valor_final + sum(servicos_extra.values())
                     
-                    item_selecionado = st.selectbox("Serviço Principal", list(servico_opcoes.keys()))
+                    novo_at = Atendimento(
+                        codigo=codigo_seq, cliente_id=cliente_ref.id, status="Em Andamento",
+                        valor_total=total_atendimento, data_criacao=obter_hora_local().isoformat(), criador="Sistema"
+                    )
+                    db.add(novo_at)
+                    db.flush()
                     
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.button("➕ Add Outro Serviço", use_container_width=True):
-                            st.session_state['fast_add_extra'] = st.session_state.get('fast_add_extra', 0) + 1
-                    with c2:
-                        if st.button("➕ Add Produto", use_container_width=True):
-                            st.session_state['fast_add_prod'] = st.session_state.get('fast_add_prod', 0) + 1
-                            
-                    servicos_extra = {}
-                    produtos_extra = {}
-                    
-                    if st.session_state.get('fast_add_extra', 0) > 0:
-                        st.markdown("<div style='background:#f4f6f8; padding:8px; border-radius:6px; margin:5px 0;'>", unsafe_allow_html=True)
-                        for i in range(st.session_state['fast_add_extra']):
-                            k = st.selectbox(f"Serviço Extra {i+1}", list(servico_opcoes.keys()), key=f"ex_s_{i}")
-                            if k != "Nenhum serviço":
-                                servicos_extra[servico_opcoes[k].id] = servico_opcoes[k].preco_padrao
-                        st.markdown("</div>", unsafe_allow_html=True)
-                        
-                    if st.session_state.get('fast_add_prod', 0) > 0:
-                        st.markdown("<div style='background:#f4f6f8; padding:8px; border-radius:6px; margin:5px 0;'>", unsafe_allow_html=True)
-                        prods = db.query(Produto).all()
-                        prod_opc = {"Nenhum": None}
-                        for p in prods: prod_opc[f"{p.nome} (Estoque: {p.quantidade_estoque}) - R$ {p.preco_venda:.2f}"] = p
-                        for i in range(st.session_state['fast_add_prod']):
-                            k = st.selectbox(f"Produto Adicional {i+1}", list(prod_opc.keys()), key=f"ex_p_{i}")
-                            if k != "Nenhum":
-                                produtos_extra[prod_opc[k].id] = prod_opc[k].preco_venda
-                        st.markdown("</div>", unsafe_allow_html=True)
-                        
-                    # Preço e Criação
-                    st.markdown("---")
-                    
-                    valor_soma = 0.0
                     if item_selecionado != "Nenhum serviço":
-                        valor_soma += servico_opcoes[item_selecionado].preco_padrao
-                    valor_soma += sum(servicos_extra.values())
-                    valor_soma += sum(produtos_extra.values())
-                    
-                    valor_final = st.number_input("Valor Final Combinado (R$)", value=valor_soma, min_value=0.0)
-                    
-                    if st.button("Iniciar Atendimento", type="primary", use_container_width=True):
-                        # Criar a OS
-                        cod = f"OS-{datetime.now().strftime('%m%d%H%M')}"
-                        novo_at = Atendimento(
-                            codigo=cod, cliente_id=cli_db.id, veiculo_id=None,
-                            status="Em Andamento", valor_total=valor_final,
-                            data_criacao=obter_hora_local().isoformat(), criador="Sistema"
-                        )
-                        db.add(novo_at)
-                        db.flush()
+                        db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=servico_opcoes[item_selecionado].id, valor_cobrado=valor_final))
                         
-                        if item_selecionado != "Nenhum serviço":
-                            db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=servico_opcoes[item_selecionado].id, valor_cobrado=servico_opcoes[item_selecionado].preco_padrao))
-                            
-                        for s_id, v in servicos_extra.items():
-                            db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=s_id, valor_cobrado=v))
-                            
-                        for p_id, v in produtos_extra.items():
-                            db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Produto", referencia_id=p_id, valor_cobrado=v))
-                            
-                        db.commit()
-                        st.session_state['fast_add_extra'] = 0
-                        st.session_state['fast_add_prod'] = 0
-                        st.session_state['success_msg'] = f"Atendimento {cod} iniciado!"
-                        st.rerun()
+                    for s_id, v in servicos_extra.items():
+                        db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=s_id, valor_cobrado=v))
+                        
+                    db.commit()
+                    st.session_state['success_msg'] = f"OS {codigo_seq} enviada ao Pátio!"
+                    st.rerun()
+                else:
+                    st.error("Selecione um cliente.")
 
     # ==========================================
     # ABA 2: PÁTIO (EM ANDAMENTO)
