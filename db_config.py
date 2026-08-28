@@ -139,6 +139,7 @@ class Colaborador(Base):
     nome = Column(String, index=True)
     cargo = Column(String)
     telefone = Column(String)
+    data_inicio = Column(Date)
     ativo = Column(Boolean, default=True)
 
 class MetaApp(Base):
@@ -155,6 +156,42 @@ class MetaApp(Base):
     peso_sex = Column(Float, default=16.66)
     peso_sab = Column(Float, default=16.70)
 
+class EsquemaSalarial(Base):
+    __tablename__ = "esquemas_salariais"
+    id = Column(Integer, primary_key=True, index=True)
+    cargo = Column(String, unique=True, index=True)
+    salario_fixo = Column(Float, default=0.0)
+    diaria_alimentacao = Column(Float, default=0.0)
+    diaria_transporte = Column(Float, default=0.0)
+    perc_comissao = Column(Float, default=0.0)
+    gatilho_meta = Column(Float, default=0.0)
+
+class Adiantamento(Base):
+    __tablename__ = "adiantamentos"
+    id = Column(Integer, primary_key=True, index=True)
+    colaborador_id = Column(Integer, ForeignKey("colaboradores.id"))
+    data = Column(Date)
+    valor = Column(Float, default=0.0)
+    descricao = Column(String)
+    recibo_id = Column(Integer, nullable=True) # Ligação com o fechamento, se já descontado
+
+class Recibo(Base):
+    __tablename__ = "recibos"
+    id = Column(Integer, primary_key=True, index=True)
+    colaborador_id = Column(Integer, ForeignKey("colaboradores.id"))
+    data_geracao = Column(Date)
+    data_inicial = Column(Date)
+    data_final = Column(Date)
+    dias_trabalhados = Column(Integer, default=0)
+    salario_proporcional = Column(Float, default=0.0)
+    total_alimentacao = Column(Float, default=0.0)
+    total_transporte = Column(Float, default=0.0)
+    total_comissoes = Column(Float, default=0.0)
+    bonus = Column(Float, default=0.0)
+    desconto_adiantamentos = Column(Float, default=0.0)
+    outros_descontos = Column(Float, default=0.0)
+    valor_liquido = Column(Float, default=0.0)
+
 def init_db():
     if not os.path.exists("data"):
         os.makedirs("data")
@@ -163,6 +200,8 @@ def init_db():
     # Auto-migration for weight columns
     with engine.connect() as conn:
         from sqlalchemy import text
+        try: conn.execute(text("ALTER TABLE colaboradores ADD COLUMN data_inicio VARCHAR"))
+        except: pass
         try: conn.execute(text("ALTER TABLE metas_app ADD COLUMN peso_seg FLOAT DEFAULT 16.66"))
         except: pass
         try: conn.execute(text("ALTER TABLE metas_app ADD COLUMN peso_ter FLOAT DEFAULT 16.66"))
