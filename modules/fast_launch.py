@@ -483,7 +483,7 @@ def render_fast_launch():
                     # Incluir todos os itens que remetem a um serviço, ignorando restrição de texto
                     itens_at = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == a.id).all()
                     for i in itens_at:
-                        s_nome = i.descricao or "Serviço Avulso"
+                        s_nome = "Serviço Avulso"
                         eh_servico = False
                         
                         if i.referencia_id:
