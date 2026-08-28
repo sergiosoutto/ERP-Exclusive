@@ -263,17 +263,22 @@ def render_fast_launch():
                 white-space: nowrap !important;
             }
             
-            /* Fazer a primeira pílula (Concluir) ficar dourada por padrão (Cobertura Exata para st.pills) */
+            /* Fazer a primeira pílula (Concluir) ficar dourada por padrão (Cobertura Ampla Absoluta) */
+            div[data-testid="stPills"] button:first-child,
+            div[data-testid="stPills"] > div > button:first-child,
+            div[data-testid="stPills"] > div > div > button:first-child,
+            div[data-testid="stPills"] [role="radiogroup"] button:nth-child(1),
             div[data-testid="stPills"] button[data-testid="stPill"]:nth-of-type(1) {
                 background-color: #C5A059 !important;
                 color: white !important;
                 border-color: #C5A059 !important;
             }
+            div[data-testid="stPills"] button:first-child *,
+            div[data-testid="stPills"] > div > button:first-child *,
+            div[data-testid="stPills"] > div > div > button:first-child *,
+            div[data-testid="stPills"] [role="radiogroup"] button:nth-child(1) *,
             div[data-testid="stPills"] button[data-testid="stPill"]:nth-of-type(1) * {
                 color: white !important;
-            }
-            div[data-testid="stPills"] button[data-testid="stPill"]:nth-of-type(1):hover {
-                background-color: #D4B06A !important;
             }
             
             /* Pílula ativa (genérica caso clique em outra) */
@@ -298,14 +303,17 @@ def render_fast_launch():
     
     st.markdown(f"### {gold_icon('rocket')} Lançamento Rápido de OS")
     
-    tab1, aba_patio, tab3, tab4 = st.tabs(["Novo", "Pátio", "Histórico", "Resumo"])
-    
     # Reimplementando a obtenção das OS do patio e os contadores corretos
     em_andamento = db.query(Atendimento).filter(Atendimento.status == "Em Andamento").order_by(Atendimento.id.asc()).all()
     qtd_andamento = len(em_andamento)
     
     concluidos_hoje = db.query(Atendimento).filter(Atendimento.status == "Finalizado").all()
     qtd_concluido = len(concluidos_hoje)
+    
+    lbl_patio = f"Pátio ({qtd_andamento})" if qtd_andamento > 0 else "Pátio"
+    lbl_hist = f"Histórico ({qtd_concluido})" if qtd_concluido > 0 else "Histórico"
+    
+    tab1, aba_patio, tab3, tab4 = st.tabs(["Novo", lbl_patio, lbl_hist, "Resumo"])
     
     # ==========================================
     # ABA 1: NOVO ATENDIMENTO
@@ -499,15 +507,20 @@ def render_fast_launch():
                     delta_min = (dt_fim - dt_cria).total_seconds() / 60.0
                     tempo_total_min.append(delta_min)
                     
-                    # Filtra de maneira mais branda para não perder registros por codificação
+                    # Incluir todos os itens que remetem a um serviço, ignorando restrição de texto
                     itens_at = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == a.id).all()
                     for i in itens_at:
-                        if i.referencia_id and i.tipo and "Serv" in i.tipo:
-                            total_servicos_entregues += 1
-                            s_nome = i.descricao or "Serviço Avulso"
+                        s_nome = i.descricao or "Serviço Avulso"
+                        eh_servico = False
+                        
+                        if i.referencia_id:
                             s = db.query(Servico).filter(Servico.id == i.referencia_id).first()
-                            if s: s_nome = s.nome
-                                
+                            if s:
+                                s_nome = s.nome
+                                eh_servico = True
+                        
+                        if eh_servico or (i.tipo and "Serv" in i.tipo):
+                            total_servicos_entregues += 1
                             servicos_count[s_nome] = servicos_count.get(s_nome, 0) + 1
                             if s_nome not in tempos_servicos: tempos_servicos[s_nome] = []
                             tempos_servicos[s_nome].append(delta_min)

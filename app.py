@@ -177,7 +177,6 @@ def render_login():
         except:
             st.markdown(f"<h1 style='text-align: center; color: white;'>CRIVO <br><span style='font-size:16px; color:var(--accent);'>CAR STUDIO</span></h1>", unsafe_allow_html=True)
             
-        st.markdown("<div class='premium-card'>", unsafe_allow_html=True)
         username = st.text_input("Usuário")
         password = st.text_input("Senha", type="password")
         
@@ -190,7 +189,6 @@ def render_login():
                 st.rerun()
             else:
                 st.error("Usuário ou senha inválidos.")
-        st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
 # 4. Estrutura Principal e Menu Lateral
