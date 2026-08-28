@@ -219,10 +219,6 @@ def main():
         st.markdown(f"<p style='text-align: center; font-size: 11px; margin-top:-10px; color: rgba(255,255,255,0.7);'>Acesso: <span style='color: white; font-weight: 800;'>{st.session_state['user_role'].upper()}</span></p>", unsafe_allow_html=True)
         st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
         
-        st.markdown("<p style='font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 5px;'>Filtro Global</p>", unsafe_allow_html=True)
-        global_date = st.date_input("Data de Referência", label_visibility="collapsed")
-        st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
-        
         menu_options = [
             "Fluxo do dia", 
             "Transações", 

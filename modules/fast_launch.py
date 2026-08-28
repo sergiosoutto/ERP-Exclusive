@@ -378,15 +378,27 @@ def render_fast_launch():
         else:
             run_rate = 0
             
-        perc_total = min(100, (fat_mes / meta_atual.valor) * 100) if meta_atual.valor > 0 else 100
-        perc_semana = min(100, (fat_semana / meta_semanal) * 100) if meta_semanal > 0 else 100
+        perc_total = (fat_mes / meta_atual.valor) * 100 if meta_atual.valor > 0 else 100
+        perc_semana = (fat_semana / meta_semanal) * 100 if meta_semanal > 0 else 100
         
         diff = run_rate - meta_semanal
         
-        falta_dia = max(0, meta_diaria - fat_hoje)
-        falta_semana = max(0, meta_semanal - fat_semana)
-        cor_dia = "#2ecc71" if falta_dia == 0 else "#e74c3c"
-        cor_sem = "#2ecc71" if falta_semana == 0 else "#e74c3c"
+        diff_dia = fat_hoje - meta_diaria
+        diff_semana = fat_semana - meta_semanal
+        
+        if diff_dia >= 0:
+            txt_dia = f"Excedente: R$ {diff_dia:,.2f}"
+            cor_dia = "#2ecc71"
+        else:
+            txt_dia = f"Falta: R$ {abs(diff_dia):,.2f}"
+            cor_dia = "#e74c3c"
+            
+        if diff_semana >= 0:
+            txt_sem = f"Excedente: R$ {diff_semana:,.2f}"
+            cor_sem = "#2ecc71"
+        else:
+            txt_sem = f"Falta: R$ {abs(diff_semana):,.2f}"
+            cor_sem = "#e74c3c"
         
         # MINI BOX FLUXO GERAL
         st.markdown(f"""
@@ -394,13 +406,13 @@ def render_fast_launch():
             <div style='text-align:center;'>
                 <div style='font-size:10px; font-weight:700; color:#888; text-transform:uppercase;'>Alvo do Dia</div>
                 <div style='font-size:16px; font-weight:800; color:#333;'>R$ {meta_diaria:,.2f}</div>
-                <div style='font-size:11px; font-weight:600; color:{cor_dia};'>Falta: R$ {falta_dia:,.2f}</div>
+                <div style='font-size:11px; font-weight:600; color:{cor_dia};'>{txt_dia}</div>
             </div>
             <div style='width:1px; height:40px; background:#e0e0e0;'></div>
             <div style='text-align:center;'>
                 <div style='font-size:10px; font-weight:700; color:#888; text-transform:uppercase;'>Meta da Semana</div>
                 <div style='font-size:16px; font-weight:800; color:#333;'>R$ {meta_semanal:,.2f}</div>
-                <div style='font-size:11px; font-weight:600; color:{cor_sem};'>Falta: R$ {falta_semana:,.2f}</div>
+                <div style='font-size:11px; font-weight:600; color:{cor_sem};'>{txt_sem}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -541,12 +553,18 @@ def render_fast_launch():
     # ==========================================
     with tab4:
         st.markdown(f"<div style='margin-top:10px; margin-bottom:12px;'><span style='font-size:16px; font-weight:500;'>{gold_icon('chart')} Relatório Executivo</span></div>", unsafe_allow_html=True)
+        
+        data_resumo = st.date_input("Filtrar por data", value=hoje.date())
+        data_resumo_str = data_resumo.strftime("%Y-%m-%d")
+        st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
+        
         # --- DASHBOARD DE METAS ---
         if meta_atual:
-            cor_diff = "#e74c3c" if diff < 0 else "#2ecc71"
-            msg_diff = f"Atenção! Projetando um déficit de R$ {abs(diff):,.2f} na meta semanal" if diff < 0 else f"Parabéns! Projetando superar a meta semanal em R$ {abs(diff):,.2f}"
+            cor_diff = "#2ecc71" if diff >= 0 else "#e74c3c"
+            msg_diff = f"Parabéns! Projetando superar a meta semanal em R$ {diff:,.2f}" if diff >= 0 else f"Atenção! Projetando um déficit de R$ {abs(diff):,.2f} na meta semanal"
             dias_trabalhados_semana = hoje.weekday() + 1
             media_dia = fat_semana / dias_trabalhados_semana if dias_trabalhados_semana > 0 else 0
+            
             st.markdown(f"""
             <div style='display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;'>
                 <div class='premium-card' style='padding:12px!important; text-align:center;'>
@@ -576,7 +594,7 @@ def render_fast_launch():
         else:
             st.info("Nenhuma Meta ativa para hoje.")
             
-        total_dia = db.query(Atendimento).filter(Atendimento.data_criacao >= hoje_str, Atendimento.status == "Finalizado").all()
+        total_dia = db.query(Atendimento).filter(Atendimento.data_criacao.like(f"{data_resumo_str}%"), Atendimento.status == "Finalizado").all()
         
         faturamento = sum(a.valor_total for a in total_dia)
         tkm = (faturamento / len(total_dia)) if total_dia else 0
@@ -688,15 +706,12 @@ def render_fast_launch():
             for s_nome, t_list in tempos_servicos.items():
                 m_min = int(sum(t_list)/len(t_list))
                 q_s = servicos_count[s_nome]
-                html_lista += f"""
-                <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;'>
-                    <span style='font-size:12px; font-weight:600; color:#333;'>{s_nome}</span>
-                    <div style='text-align:right;'>
-                        <span style='font-size:10px; background:#f0f0f0; padding:2px 6px; border-radius:10px; margin-right:4px; color:#555;'>{q_s} un</span>
-                        <span style='font-size:10px; color:white; background:var(--accent); padding:2px 6px; border-radius:10px; font-weight:600;'>{m_min} min/méd</span>
-                    </div>
-                </div>
-                """
+                html_lista += f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;'>"
+                html_lista += f"<span style='font-size:12px; font-weight:600; color:#333;'>{s_nome}</span>"
+                html_lista += f"<div style='text-align:right;'>"
+                html_lista += f"<span style='font-size:10px; background:#f0f0f0; padding:2px 6px; border-radius:10px; margin-right:4px; color:#555;'>{q_s} un</span>"
+                html_lista += f"<span style='font-size:10px; color:white; background:var(--accent); padding:2px 6px; border-radius:10px; font-weight:600;'>{m_min} min/méd</span>"
+                html_lista += f"</div></div>"
             html_lista += "</div>"
             st.markdown(html_lista, unsafe_allow_html=True)
         else:
