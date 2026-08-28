@@ -141,6 +141,13 @@ class Colaborador(Base):
     telefone = Column(String)
     ativo = Column(Boolean, default=True)
 
+class MetaApp(Base):
+    __tablename__ = "metas_app"
+    id = Column(Integer, primary_key=True, index=True)
+    descricao = Column(String)
+    valor = Column(Float, default=0.0)
+    data_inicial = Column(Date)
+    data_final = Column(Date)
 
 def init_db():
     if not os.path.exists("data"):

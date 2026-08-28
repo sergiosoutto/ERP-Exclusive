@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from db_config import get_db, Cliente, Servico, Produto, Atendimento, ItemAtendimento, FormaPagamento, ServicoInsumo
+from db_config import get_db, Cliente, Servico, Produto, Atendimento, ItemAtendimento, FormaPagamento, ServicoInsumo, MetaApp
 from datetime import datetime, timedelta, timezone
 import unicodedata
 
@@ -29,6 +29,17 @@ def formatar_tempo(delta):
     if horas > 0:
         return f"{horas}h {minutos}m"
     return f"{minutos}m"
+
+def calcular_dias_uteis(inicio_date, fim_date):
+    if inicio_date > fim_date:
+        return 0
+    dias = 0
+    current = inicio_date
+    while current <= fim_date:
+        if current.weekday() < 6: # 0=Seg a 5=Sab
+            dias += 1
+        current += timedelta(days=1)
+    return dias
 
 def gold_icon(icon_name):
     icons = {
@@ -447,6 +458,51 @@ def render_fast_launch():
     with tab4:
         st.markdown(f"<div style='margin-top:10px; margin-bottom:12px;'><span style='font-size:16px; font-weight:500;'>{gold_icon('chart')} Relatório Executivo</span></div>", unsafe_allow_html=True)
         hoje_str = hoje.strftime("%Y-%m-%d")
+        
+        # --- LÓGICA DE METAS ---
+        meta_atual = db.query(MetaApp).filter(MetaApp.data_inicial <= hoje.date(), MetaApp.data_final >= hoje.date()).order_by(MetaApp.id.desc()).first()
+        if meta_atual:
+            d1_meta = meta_atual.data_inicial
+            d2_meta = meta_atual.data_final
+            atends_mes = db.query(Atendimento).filter(Atendimento.data_criacao >= d1_meta.strftime("%Y-%m-%d"), Atendimento.data_criacao <= d2_meta.strftime("%Y-%m-%dT23:59:59"), Atendimento.status == "Finalizado").all()
+            fat_mes = sum(a.valor_total for a in atends_mes)
+            segunda_atual = (hoje - timedelta(days=hoje.weekday())).strftime("%Y-%m-%d")
+            atends_semana = [a for a in atends_mes if a.data_criacao >= segunda_atual]
+            fat_semana_ate_ontem = sum(a.valor_total for a in atends_semana if a.data_criacao < hoje_str)
+            dias_totais_meta = calcular_dias_uteis(d1_meta, d2_meta)
+            dias_trabalhados = calcular_dias_uteis(d1_meta, hoje.date())
+            meta_semanal = meta_atual.valor / (dias_totais_meta/6.0) if dias_totais_meta > 0 else 0
+            if hoje.weekday() == 6:
+                meta_diaria = 0
+            else:
+                meta_diaria = max(0, (meta_semanal - fat_semana_ate_ontem) / (6 - hoje.weekday()))
+            run_rate = (fat_mes / dias_trabalhados) * dias_totais_meta if dias_trabalhados > 0 else 0
+            perc = min(100, (fat_mes / meta_atual.valor) * 100) if meta_atual.valor > 0 else 100
+            diff = run_rate - meta_atual.valor
+            cor_diff = "#e74c3c" if diff < 0 else "#2ecc71"
+            msg_diff = f"Você estourou R$ {abs(diff):,.2f} do ritmo ideal até hoje" if diff < 0 else f"Parabéns! Você está acima do ritmo ideal em R$ {abs(diff):,.2f}"
+            media_dia = fat_mes / dias_trabalhados if dias_trabalhados > 0 else 0
+            st.markdown(f"""
+            <div class='premium-card' style='padding:12px 16px!important; margin-bottom:15px;'>
+                <div style='display:flex; justify-content:space-between; margin-bottom:8px;'>
+                    <div style='font-size:12px; font-weight:700; color:#555;'>{gold_icon('graph-up')} Run Rate ({meta_atual.descricao})</div>
+                    <div style='font-size:12px; font-weight:600; color:#555;'><b>R$ {fat_mes:,.2f}</b> acumulado de <b>R$ {meta_atual.valor:,.2f}</b> meta</div>
+                </div>
+                <div style='width:100%; height:12px; background:#e0e4e8; border-radius:6px; overflow:hidden; margin-bottom:12px;'>
+                    <div style='width:{perc}%; height:100%; background:#ff4b4b;'></div>
+                </div>
+                <div style='background:#f4f6f8; border-radius:6px; padding:10px; display:flex; justify-content:space-between; margin-bottom:10px;'>
+                    <div><div style='font-size:9px; font-weight:700; color:#888; text-transform:uppercase;'>Restante</div><div style='font-size:14px; font-weight:800; color:#2ecc71;'>R$ {max(0, meta_atual.valor - fat_mes):,.2f}</div></div>
+                    <div style='text-align:center;'><div style='font-size:9px; font-weight:700; color:#888; text-transform:uppercase;'>Média / Dia</div><div style='font-size:14px; font-weight:800; color:#444;'>R$ {media_dia:,.2f}</div></div>
+                    <div style='text-align:right;'><div style='font-size:9px; font-weight:700; color:#888; text-transform:uppercase;'>Permitido / Dia</div><div style='font-size:14px; font-weight:800; color:#444;'>R$ {meta_diaria:,.2f}</div></div>
+                </div>
+                <div style='display:flex; justify-content:space-between; font-size:11px;'>
+                    <div style='color:{cor_diff}; font-weight:600;'>{msg_diff}</div>
+                    <div style='text-align:right; color:#888;'>Saldo Final Projetado: <b style='color:{cor_diff};'>R$ {diff:,.2f}</b><br>Faturamento Projetado: <b>R$ {run_rate:,.2f}</b></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
         total_dia = db.query(Atendimento).filter(Atendimento.data_criacao >= hoje_str, Atendimento.status == "Finalizado").all()
         
         faturamento = sum(a.valor_total for a in total_dia)
@@ -581,8 +637,17 @@ def render_fast_launch():
             percep += " focado em serviços premium." if tkm > 150 else " focado em volume e giro rápido."
             
             melhoria = "Manter o ritmo operacional."
+            
+            if meta_atual:
+                if diff < 0:
+                    percep += f" Atenção: O ritmo atual projeta fechar R$ {abs(diff):,.2f} abaixo da meta ({meta_atual.descricao})."
+                    melhoria = "Focar em upsell para recuperar o déficit."
+                else:
+                    percep += f" Ótimo: O ritmo está superando a meta em R$ {diff:,.2f} projetados."
+                    melhoria = "Manter a excelente constância."
+            
             if tempo_medio_global > 90:
-                melhoria = "Tempo médio elevado. Tente otimizar a triagem e transição de veículos para reduzir o gargalo de 90+ min."
+                melhoria = "Atenção ao tempo de box. A média passou de 1h30. Tente otimizar a triagem e transição de veículos para reduzir o gargalo de 90+ min."
             elif tkm < 50:
                 melhoria = "Ticket médio baixo. Oportunidade para ofertar serviços adicionais (cross-sell) no balcão."
                 

@@ -1,12 +1,25 @@
 import streamlit as st
 import pandas as pd
-from db_config import get_db, CategoriaFinanceira, SubcategoriaFinanceira, ContaBancaria, Colaborador, Produto, Servico, FormaPagamento, Usuario, ServicoInsumo
+from db_config import get_db, CategoriaFinanceira, SubcategoriaFinanceira, ContaBancaria, Colaborador, Produto, Servico, FormaPagamento, Usuario, ServicoInsumo, MetaApp
 from modules.fast_launch import gold_icon, dialog_decorator
 import hashlib
 
 # ==========================================
 # Dialogs de Bancos e Categorias
 # ==========================================
+@dialog_decorator("Nova Meta")
+def dialog_nova_meta():
+    db = next(get_db())
+    desc = st.text_input("Descrição (Ex: Agosto/2026)")
+    val = st.number_input("Valor Total (R$)", min_value=0.0)
+    c1, c2 = st.columns(2)
+    with c1: d1 = st.date_input("Data Inicial")
+    with c2: d2 = st.date_input("Data Final")
+    if st.button("Salvar Meta", type="primary", use_container_width=True):
+        db.add(MetaApp(descricao=desc, valor=val, data_inicial=d1, data_final=d2))
+        db.commit()
+        st.rerun()
+
 @dialog_decorator("Nova Transferência Interna")
 def dialog_transferencia():
     db = next(get_db())
@@ -258,14 +271,15 @@ def render_cadastros():
     
     db = next(get_db())
     
-    t_cat, t_banco, t_colab, t_insumo, t_servico, t_pag, t_usr = st.tabs([
+    t_cat, t_banco, t_colab, t_insumo, t_servico, t_pag, t_usr, t_meta = st.tabs([
         "Categorias", 
         "Bancos",
         "Colaboradores",
         "Insumos",
         "Serviços",
         "Formas de Pgto",
-        "Usuários"
+        "Usuários",
+        "Metas"
     ])
     
     # --- TAB 1: CATEGORIAS ---
@@ -435,3 +449,23 @@ def render_cadastros():
                             db.delete(u)
                             db.commit()
                             st.rerun()
+
+    # --- TAB 8: METAS ---
+    with t_meta:
+        col_m1, col_m2 = st.columns([4, 1])
+        with col_m1: st.markdown(f"### {gold_icon('graph-up')} Gestão de Metas", unsafe_allow_html=True)
+        with col_m2:
+            if st.button("+ Nova Meta", use_container_width=True, type="primary"): dialog_nova_meta()
+                
+        st.markdown("---")
+        metas = db.query(MetaApp).order_by(MetaApp.data_inicial.desc()).all()
+        if metas:
+            for m in metas:
+                with st.expander(f"{m.descricao} (R$ {m.valor:,.2f})"):
+                    st.write(f"**Período:** {m.data_inicial.strftime('%d/%m/%Y')} a {m.data_final.strftime('%d/%m/%Y')}")
+                    if st.button("Excluir", key=f"del_meta_{m.id}", type="primary"):
+                        db.delete(m)
+                        db.commit()
+                        st.rerun()
+        else:
+            st.info("Nenhuma meta cadastrada.")
