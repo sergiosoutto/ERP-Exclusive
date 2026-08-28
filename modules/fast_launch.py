@@ -330,21 +330,59 @@ def render_fast_launch():
     if meta_atual:
         d1_meta = meta_atual.data_inicial
         d2_meta = meta_atual.data_final
+        
+        # Helper de pesos
+        def get_peso(meta, date_obj):
+            wd = date_obj.weekday()
+            if wd == 0: return getattr(meta, "peso_seg", 16.66)
+            if wd == 1: return getattr(meta, "peso_ter", 16.66)
+            if wd == 2: return getattr(meta, "peso_qua", 16.66)
+            if wd == 3: return getattr(meta, "peso_qui", 16.66)
+            if wd == 4: return getattr(meta, "peso_sex", 16.66)
+            if wd == 5: return getattr(meta, "peso_sab", 16.70)
+            return 0
+            
+        peso_total_periodo = sum(get_peso(meta_atual, d1_meta + timedelta(days=i)) for i in range((d2_meta - d1_meta).days + 1))
+        valor_por_peso = meta_atual.valor / peso_total_periodo if peso_total_periodo > 0 else 0
+        
+        segunda_atual = hoje.date() - timedelta(days=hoje.weekday())
+        
+        # Calcula meta apenas para os dias desta semana que estão dentro do período da meta
+        meta_semanal = sum(get_peso(meta_atual, segunda_atual + timedelta(days=i)) * valor_por_peso for i in range(6) if d1_meta <= (segunda_atual + timedelta(days=i)) <= d2_meta)
+        
         atends_mes = db.query(Atendimento).filter(Atendimento.data_criacao >= d1_meta.strftime("%Y-%m-%d"), Atendimento.data_criacao <= d2_meta.strftime("%Y-%m-%dT23:59:59"), Atendimento.status == "Finalizado").all()
         fat_mes = sum(a.valor_total for a in atends_mes)
-        segunda_atual = (hoje - timedelta(days=hoje.weekday())).strftime("%Y-%m-%d")
-        atends_semana = [a for a in atends_mes if a.data_criacao >= segunda_atual]
+        
+        seg_str = segunda_atual.strftime("%Y-%m-%d")
+        atends_semana = [a for a in atends_mes if a.data_criacao >= seg_str]
         fat_semana = sum(a.valor_total for a in atends_semana)
         fat_semana_ate_ontem = sum(a.valor_total for a in atends_semana if a.data_criacao < hoje_str)
         fat_hoje = sum(a.valor_total for a in atends_semana if a.data_criacao.startswith(hoje_str))
-        dias_totais_meta = calcular_dias_uteis(d1_meta, d2_meta)
-        dias_trabalhados = calcular_dias_uteis(d1_meta, hoje.date())
-        meta_semanal = meta_atual.valor / (dias_totais_meta/6.0) if dias_totais_meta > 0 else 0
-        meta_diaria = max(0, (meta_semanal - fat_semana_ate_ontem) / (6 - hoje.weekday())) if hoje.weekday() < 6 else 0
-        run_rate = (fat_mes / dias_trabalhados) * dias_totais_meta if dias_trabalhados > 0 else 0
+        
+        # Pesos para cálculo diário
+        peso_restante_semana = sum(get_peso(meta_atual, hoje.date() + timedelta(days=i)) for i in range(6 - hoje.weekday()) if d1_meta <= (hoje.date() + timedelta(days=i)) <= d2_meta)
+        peso_hoje = get_peso(meta_atual, hoje.date()) if (d1_meta <= hoje.date() <= d2_meta) else 0
+        
+        if peso_restante_semana > 0:
+            valor_restante_semana = meta_semanal - fat_semana_ate_ontem
+            meta_diaria = max(0, valor_restante_semana * (peso_hoje / peso_restante_semana))
+        else:
+            meta_diaria = 0
+            
+        peso_trabalhado_semana = sum(get_peso(meta_atual, segunda_atual + timedelta(days=i)) for i in range(hoje.weekday() + 1) if d1_meta <= (segunda_atual + timedelta(days=i)) <= d2_meta)
+        peso_total_semana = sum(get_peso(meta_atual, segunda_atual + timedelta(days=i)) for i in range(6) if d1_meta <= (segunda_atual + timedelta(days=i)) <= d2_meta)
+        
+        if peso_trabalhado_semana > 0:
+            eficiencia = fat_semana / peso_trabalhado_semana
+            run_rate = eficiencia * peso_total_semana
+        else:
+            run_rate = 0
+            
         perc_total = min(100, (fat_mes / meta_atual.valor) * 100) if meta_atual.valor > 0 else 100
         perc_semana = min(100, (fat_semana / meta_semanal) * 100) if meta_semanal > 0 else 100
-        diff = run_rate - meta_atual.valor
+        
+        diff = run_rate - meta_semanal
+        
         falta_dia = max(0, meta_diaria - fat_hoje)
         falta_semana = max(0, meta_semanal - fat_semana)
         cor_dia = "#2ecc71" if falta_dia == 0 else "#e74c3c"
@@ -506,8 +544,9 @@ def render_fast_launch():
         # --- DASHBOARD DE METAS ---
         if meta_atual:
             cor_diff = "#e74c3c" if diff < 0 else "#2ecc71"
-            msg_diff = f"Atenção! Você está projetando um déficit de R$ {abs(diff):,.2f}" if diff < 0 else f"Parabéns! Você projeta superar a meta em R$ {abs(diff):,.2f}"
-            media_dia = fat_mes / dias_trabalhados if dias_trabalhados > 0 else 0
+            msg_diff = f"Atenção! Projetando um déficit de R$ {abs(diff):,.2f} na meta semanal" if diff < 0 else f"Parabéns! Projetando superar a meta semanal em R$ {abs(diff):,.2f}"
+            dias_trabalhados_semana = hoje.weekday() + 1
+            media_dia = fat_semana / dias_trabalhados_semana if dias_trabalhados_semana > 0 else 0
             st.markdown(f"""
             <div style='display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;'>
                 <div class='premium-card' style='padding:12px!important; text-align:center;'>
@@ -523,13 +562,13 @@ def render_fast_launch():
             </div>
             
             <div class='premium-card' style='padding:12px 16px!important; margin-bottom:15px;'>
-                <div style='font-size:12px; font-weight:700; color:#555; margin-bottom:8px;'>{gold_icon('graph-up')} Projeção de Fechamento (Run Rate)</div>
+                <div style='font-size:12px; font-weight:700; color:#555; margin-bottom:8px;'>{gold_icon('graph-up')} Projeção de Fechamento da Semana (Run Rate)</div>
                 <div style='background:#f4f6f8; border-radius:6px; padding:10px; display:flex; justify-content:space-between; margin-bottom:10px;'>
                     <div style='text-align:left;'><div style='font-size:9px; font-weight:700; color:#888; text-transform:uppercase;'>Status Atual</div><div style='font-size:12px; font-weight:800; color:{cor_diff};'>{msg_diff}</div></div>
-                    <div style='text-align:right;'><div style='font-size:9px; font-weight:700; color:#888; text-transform:uppercase;'>Média / Dia Atual</div><div style='font-size:14px; font-weight:800; color:#444;'>R$ {media_dia:,.2f}</div></div>
+                    <div style='text-align:right;'><div style='font-size:9px; font-weight:700; color:#888; text-transform:uppercase;'>Média / Dia (Semana)</div><div style='font-size:14px; font-weight:800; color:#444;'>R$ {media_dia:,.2f}</div></div>
                 </div>
                 <div style='display:flex; justify-content:space-between; align-items:center;'>
-                    <div style='font-size:12px; color:#888;'>Faturamento projetado:</div>
+                    <div style='font-size:12px; color:#888;'>Faturamento projetado (Fim da Semana):</div>
                     <div style='font-size:16px; font-weight:800; color:{cor_diff};'>R$ {run_rate:,.2f}</div>
                 </div>
             </div>

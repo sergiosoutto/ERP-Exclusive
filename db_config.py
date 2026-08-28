@@ -148,12 +148,34 @@ class MetaApp(Base):
     valor = Column(Float, default=0.0)
     data_inicial = Column(Date)
     data_final = Column(Date)
+    peso_seg = Column(Float, default=16.66)
+    peso_ter = Column(Float, default=16.66)
+    peso_qua = Column(Float, default=16.66)
+    peso_qui = Column(Float, default=16.66)
+    peso_sex = Column(Float, default=16.66)
+    peso_sab = Column(Float, default=16.70)
 
 def init_db():
     if not os.path.exists("data"):
         os.makedirs("data")
     Base.metadata.create_all(bind=engine)
     
+    # Auto-migration for weight columns
+    with engine.connect() as conn:
+        from sqlalchemy import text
+        try: conn.execute(text("ALTER TABLE metas_app ADD COLUMN peso_seg FLOAT DEFAULT 16.66"))
+        except: pass
+        try: conn.execute(text("ALTER TABLE metas_app ADD COLUMN peso_ter FLOAT DEFAULT 16.66"))
+        except: pass
+        try: conn.execute(text("ALTER TABLE metas_app ADD COLUMN peso_qua FLOAT DEFAULT 16.66"))
+        except: pass
+        try: conn.execute(text("ALTER TABLE metas_app ADD COLUMN peso_qui FLOAT DEFAULT 16.66"))
+        except: pass
+        try: conn.execute(text("ALTER TABLE metas_app ADD COLUMN peso_sex FLOAT DEFAULT 16.66"))
+        except: pass
+        try: conn.execute(text("ALTER TABLE metas_app ADD COLUMN peso_sab FLOAT DEFAULT 16.70"))
+        except: pass
+        
     db = SessionLocal()
     from sqlalchemy import text
     

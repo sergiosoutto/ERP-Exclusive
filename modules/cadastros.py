@@ -15,8 +15,24 @@ def dialog_nova_meta():
     c1, c2 = st.columns(2)
     with c1: d1 = st.date_input("Data Inicial")
     with c2: d2 = st.date_input("Data Final")
+    
+    st.markdown("<div style='font-size:12px; font-weight:bold; margin-top:10px;'>Pesos por Dia da Semana (%)</div>", unsafe_allow_html=True)
+    c_seg, c_ter, c_qua = st.columns(3)
+    p_seg = c_seg.number_input("Segunda", value=15.0, min_value=0.0)
+    p_ter = c_ter.number_input("Terça", value=15.0, min_value=0.0)
+    p_qua = c_qua.number_input("Quarta", value=15.0, min_value=0.0)
+    
+    c_qui, c_sex, c_sab = st.columns(3)
+    p_qui = c_qui.number_input("Quinta", value=15.0, min_value=0.0)
+    p_sex = c_sex.number_input("Sexta", value=15.0, min_value=0.0)
+    p_sab = c_sab.number_input("Sábado", value=25.0, min_value=0.0)
+    
     if st.button("Salvar Meta", type="primary", use_container_width=True):
-        db.add(MetaApp(descricao=desc, valor=val, data_inicial=d1, data_final=d2))
+        db.add(MetaApp(
+            descricao=desc, valor=val, data_inicial=d1, data_final=d2,
+            peso_seg=p_seg, peso_ter=p_ter, peso_qua=p_qua, 
+            peso_qui=p_qui, peso_sex=p_sex, peso_sab=p_sab
+        ))
         db.commit()
         st.rerun()
 
