@@ -328,14 +328,15 @@ def render_fast_launch():
             cliente_opcoes = ["-- Selecione o Cliente --"]
             clientes = db.query(Cliente).all()
             for c in clientes:
-                if termo in remover_acentos(c.nome.lower()) or (c.placa_veiculo and termo in remover_acentos(c.placa_veiculo.lower())):
-                    cliente_opcoes.append(f"{c.nome} ({c.placa_veiculo or 'Sem Placa'})")
+                c_nome_str = c.nome or "Desconhecido"
+                if termo in remover_acentos(c_nome_str.lower()) or (c.placa_veiculo and termo in remover_acentos(c.placa_veiculo.lower())):
+                    cliente_opcoes.append(f"{c_nome_str} ({c.placa_veiculo or 'Sem Placa'})")
                     
             cli_sel = st.selectbox("Selecione um Cliente", cliente_opcoes, index=0)
             
             if cli_sel != "-- Selecione o Cliente --":
-                c_nome = cli_sel.split(" (")[0]
-                cli_db = next((c for c in clientes if c.nome == c_nome), None)
+                c_nome_sel = cli_sel.split(" (")[0]
+                cli_db = next((c for c in clientes if (c.nome or "Desconhecido") == c_nome_sel), None)
                 if cli_db:
                     st.markdown("---")
                     st.markdown(f"<div style='font-size:14px; font-weight:600; color:var(--text-main); margin-bottom:5px;'>O que será feito no veículo de {cli_db.nome}?</div>", unsafe_allow_html=True)
