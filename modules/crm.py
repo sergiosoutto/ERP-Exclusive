@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from db_config import get_db, Cliente, Atendimento
-from modules.fast_launch import gold_icon, dialog_novo_cliente
+from modules.fast_launch import gold_icon, dialog_novo_cliente, dialog_decorator
 
-@st.experimental_dialog("Editar Cliente")
+@dialog_decorator("Editar Cliente")
 def dialog_editar_cliente(cliente_id):
     db = next(get_db())
     c = db.query(Cliente).filter(Cliente.id == cliente_id).first()
@@ -25,7 +25,7 @@ def dialog_editar_cliente(cliente_id):
         db.commit()
         st.rerun()
 
-@st.experimental_dialog("Excluir Cliente")
+@dialog_decorator("Excluir Cliente")
 def dialog_excluir_cliente(cliente_id):
     db = next(get_db())
     c = db.query(Cliente).filter(Cliente.id == cliente_id).first()
