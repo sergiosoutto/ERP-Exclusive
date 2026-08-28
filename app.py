@@ -290,6 +290,10 @@ def main():
         from modules.cadastros import render_cadastros
         render_cadastros()
         
+    elif selected == "CRM & Fidelidade":
+        from modules.crm import render_crm
+        render_crm()
+        
     else:
         st.title(selected)
         st.markdown(f"""

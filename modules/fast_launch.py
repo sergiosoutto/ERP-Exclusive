@@ -315,10 +315,11 @@ def render_fast_launch():
     st.markdown(f"### {gold_icon('rocket')} Lançamento Rápido de OS")
     
     # Reimplementando a obtenção das OS do patio e os contadores corretos
+    hoje_str_patio = hoje.strftime("%Y-%m-%d")
     em_andamento = db.query(Atendimento).filter(Atendimento.status == "Em Andamento").order_by(Atendimento.id.asc()).all()
     qtd_andamento = len(em_andamento)
     
-    concluidos_hoje = db.query(Atendimento).filter(Atendimento.status == "Finalizado").all()
+    concluidos_hoje = db.query(Atendimento).filter(Atendimento.status == "Finalizado", Atendimento.data_criacao.like(f"{hoje_str_patio}%")).all()
     qtd_concluido = len(concluidos_hoje)
     
     lbl_patio = f"Pátio ({qtd_andamento})" if qtd_andamento > 0 else "Pátio"
@@ -533,7 +534,7 @@ def render_fast_launch():
     with tab3:
         st.markdown(f"<div style='margin-top:10px; margin-bottom:12px;'><span style='font-size:16px; font-weight:500;'>Concluídos Hoje</span> <span class='red-badge'>{qtd_concluido}</span></div>", unsafe_allow_html=True)
         
-        concluidos = db.query(Atendimento).filter(Atendimento.status == "Finalizado").order_by(Atendimento.id.desc()).limit(20).all()
+        concluidos = db.query(Atendimento).filter(Atendimento.status == "Finalizado", Atendimento.data_criacao.like(f"{hoje_str_patio}%")).order_by(Atendimento.id.desc()).all()
         if concluidos:
             for at in concluidos:
                 cli = db.query(Cliente).filter(Cliente.id == at.cliente_id).first()
