@@ -370,7 +370,7 @@ def render_fast_launch():
                     
                     novo_at = Atendimento(
                         codigo=codigo_seq, cliente_id=cliente_ref.id, status="Em Andamento",
-                        valor_total=total_atendimento, data_criacao=obter_hora_local().isoformat(), criador="Sistema"
+                        valor_total=total_atendimento, data_criacao=obter_hora_local().isoformat()
                     )
                     db.add(novo_at)
                     db.flush()
