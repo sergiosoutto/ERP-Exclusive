@@ -263,21 +263,16 @@ def render_fast_launch():
                 white-space: nowrap !important;
             }
             
-            /* Fazer a primeira pílula (Concluir) ficar dourada por padrão (Cobertura Ampla de DOM) */
-            div[data-testid="stPills"] button:nth-child(1),
-            div[data-testid="stPills"] > div > button:first-of-type,
-            div[data-testid="stPills"] label:nth-child(1) > div {
+            /* Fazer a primeira pílula (Concluir) ficar dourada por padrão (Cobertura Exata para st.pills) */
+            div[data-testid="stPills"] button[data-testid="stPill"]:nth-of-type(1) {
                 background-color: #C5A059 !important;
                 color: white !important;
                 border-color: #C5A059 !important;
             }
-            div[data-testid="stPills"] button:nth-child(1) p,
-            div[data-testid="stPills"] > div > button:first-of-type p,
-            div[data-testid="stPills"] label:nth-child(1) > div p {
+            div[data-testid="stPills"] button[data-testid="stPill"]:nth-of-type(1) * {
                 color: white !important;
             }
-            div[data-testid="stPills"] button:nth-child(1):hover,
-            div[data-testid="stPills"] > div > button:first-of-type:hover {
+            div[data-testid="stPills"] button[data-testid="stPill"]:nth-of-type(1):hover {
                 background-color: #D4B06A !important;
             }
             
@@ -298,20 +293,19 @@ def render_fast_launch():
             st.rerun()
 
     db = next(get_db())
-    hoje = obter_hora_local().date()
+    hoje = datetime.now()
+    hoje_inicio = hoje.replace(hour=0, minute=0, second=0, microsecond=0)
     
-    atendimentos_hoje = db.query(Atendimento).filter(Atendimento.data_criacao >= hoje.strftime("%Y-%m-%d")).all()
-    qtd_andamento = sum(1 for a in atendimentos_hoje if a.status == "Em andamento")
-    qtd_concluido = sum(1 for a in atendimentos_hoje if a.status == "Finalizado")
+    st.markdown(f"### {gold_icon('rocket')} Lançamento Rápido de OS")
     
-    clientes = db.query(Cliente).all()
-    servicos = db.query(Servico).all()
+    tab1, aba_patio, tab3, tab4 = st.tabs(["Novo", "Pátio", "Histórico", "Resumo"])
     
-    # Abas usando marcação nativa e segura (Emojis e contadores visíveis sempre)
-    aba_patio = f"Pátio 🔴 {qtd_andamento}" if qtd_andamento > 0 else "Pátio"
-    aba_hist = f"Histórico 🔴 {qtd_concluido}" if qtd_concluido > 0 else "Histórico"
+    # Reimplementando a obtenção das OS do patio e os contadores corretos
+    em_andamento = db.query(Atendimento).filter(Atendimento.status == "Em Andamento").order_by(Atendimento.id.asc()).all()
+    qtd_andamento = len(em_andamento)
     
-    tab1, tab2, tab3, tab4 = st.tabs(["Novo", aba_patio, aba_hist, "Resumo"])
+    concluidos_hoje = db.query(Atendimento).filter(Atendimento.status == "Finalizado").all()
+    qtd_concluido = len(concluidos_hoje)
     
     # ==========================================
     # ABA 1: NOVO ATENDIMENTO
@@ -324,82 +318,108 @@ def render_fast_launch():
             
             termo = remover_acentos(busca_cliente.strip().lower())
             cliente_opcoes = ["-- Selecione o Cliente --"]
+            clientes = db.query(Cliente).all()
             for c in clientes:
-                if c.codigo == "CLI-0000": continue
-                nome = remover_acentos(c.nome or "").lower()
-                placa = remover_acentos(c.placa_veiculo or "").lower()
-                if termo and (termo not in nome and termo not in placa): continue
-                cliente_opcoes.append(f"{c.codigo} | {c.nome} ({c.placa_veiculo or 'Sem Placa'})")
-            
-            index_sel = 1 if len(cliente_opcoes) == 2 else 0
-            cliente_selecionado = st.selectbox("Cliente", cliente_opcoes, index=index_sel, label_visibility="collapsed")
-            
-            st.markdown("<hr style='margin:12px 0;'>", unsafe_allow_html=True)
-            
-            st.markdown(f"<label style='font-size:13px; font-weight:500;'>{gold_icon('service')} Serviço Principal</label>", unsafe_allow_html=True)
-            servico_opcoes = {s.nome: s for s in servicos}
-            item_selecionado = st.selectbox("Serviço Principal", list(servico_opcoes.keys()) if servico_opcoes else ["Nenhum serviço"], label_visibility="collapsed")
-            
-            valor_sugerido = 0.0
-            if item_selecionado and item_selecionado != "Nenhum serviço":
-                valor_sugerido = servico_opcoes[item_selecionado].preco_padrao
-                
-            valor_final = st.number_input("Valor Cobrado (R$)", value=valor_sugerido, min_value=0.0)
-            
-            mais_servico = st.checkbox("Adicionar múltiplos serviços?")
-            servicos_extra = {}
-            if mais_servico:
-                selecionados_extra = st.multiselect("Serviços Adicionais", list(servico_opcoes.keys()))
-                for sel in selecionados_extra:
-                    v = st.number_input(f"Valor {sel} (R$)", value=servico_opcoes[sel].preco_padrao, min_value=0.0)
-                    servicos_extra[servico_opcoes[sel].id] = v
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            if st.button("Enviar para o Pátio", type="primary", use_container_width=True):
-                if cliente_selecionado and not cliente_selecionado.startswith("--"):
-                    cli_codigo = cliente_selecionado.split(" |")[0]
-                    cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
+                if termo in remover_acentos(c.nome.lower()) or (c.placa and termo in remover_acentos(c.placa.lower())):
+                    cliente_opcoes.append(f"{c.nome} ({c.placa or 'Sem Placa'})")
                     
-                    codigo_seq = f"OS-{db.query(Atendimento).count()+1:04d}"
-                    total_atendimento = valor_final + sum(servicos_extra.values())
+            cli_sel = st.selectbox("Selecione um Cliente", cliente_opcoes, index=0)
+            
+            if cli_sel != "-- Selecione o Cliente --":
+                c_nome = cli_sel.split(" (")[0]
+                cli_db = next((c for c in clientes if c.nome == c_nome), None)
+                if cli_db:
+                    st.markdown("---")
+                    st.markdown(f"<div style='font-size:14px; font-weight:600; color:var(--text-main); margin-bottom:5px;'>O que será feito no veículo de {cli_db.nome}?</div>", unsafe_allow_html=True)
                     
-                    novo_at = Atendimento(
-                        codigo=codigo_seq, cliente_id=cliente_ref.id, status="Em andamento",
-                        valor_total=total_atendimento, data_criacao=obter_hora_local().isoformat()
-                    )
-                    db.add(novo_at)
-                    db.flush()
+                    # Interface Ultra Rápida
+                    servicos = db.query(Servico).filter(Servico.ativo == True).all()
+                    servico_opcoes = {"Nenhum serviço": None}
+                    for s in servicos: servico_opcoes[f"{s.nome} - R$ {s.preco_venda:.2f}"] = s
                     
+                    item_selecionado = st.selectbox("Serviço Principal", list(servico_opcoes.keys()))
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("➕ Add Outro Serviço", use_container_width=True):
+                            st.session_state['fast_add_extra'] = st.session_state.get('fast_add_extra', 0) + 1
+                    with c2:
+                        if st.button("➕ Add Produto", use_container_width=True):
+                            st.session_state['fast_add_prod'] = st.session_state.get('fast_add_prod', 0) + 1
+                            
+                    servicos_extra = {}
+                    produtos_extra = {}
+                    
+                    if st.session_state.get('fast_add_extra', 0) > 0:
+                        st.markdown("<div style='background:#f4f6f8; padding:8px; border-radius:6px; margin:5px 0;'>", unsafe_allow_html=True)
+                        for i in range(st.session_state['fast_add_extra']):
+                            k = st.selectbox(f"Serviço Extra {i+1}", list(servico_opcoes.keys()), key=f"ex_s_{i}")
+                            if k != "Nenhum serviço":
+                                servicos_extra[servico_opcoes[k].id] = servico_opcoes[k].preco_venda
+                        st.markdown("</div>", unsafe_allow_html=True)
+                        
+                    if st.session_state.get('fast_add_prod', 0) > 0:
+                        st.markdown("<div style='background:#f4f6f8; padding:8px; border-radius:6px; margin:5px 0;'>", unsafe_allow_html=True)
+                        prods = db.query(Produto).all()
+                        prod_opc = {"Nenhum": None}
+                        for p in prods: prod_opc[f"{p.nome} (Estoque: {p.quantidade_estoque}) - R$ {p.preco_venda:.2f}"] = p
+                        for i in range(st.session_state['fast_add_prod']):
+                            k = st.selectbox(f"Produto Adicional {i+1}", list(prod_opc.keys()), key=f"ex_p_{i}")
+                            if k != "Nenhum":
+                                produtos_extra[prod_opc[k].id] = prod_opc[k].preco_venda
+                        st.markdown("</div>", unsafe_allow_html=True)
+                        
+                    # Preço e Criação
+                    st.markdown("---")
+                    
+                    valor_soma = 0.0
                     if item_selecionado != "Nenhum serviço":
-                        db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=servico_opcoes[item_selecionado].id, valor_cobrado=valor_final))
+                        valor_soma += servico_opcoes[item_selecionado].preco_venda
+                    valor_soma += sum(servicos_extra.values())
+                    valor_soma += sum(produtos_extra.values())
+                    
+                    valor_final = st.number_input("Valor Final Combinado (R$)", value=valor_soma, min_value=0.0)
+                    
+                    if st.button("Iniciar Atendimento", type="primary", use_container_width=True):
+                        # Criar a OS
+                        cod = f"OS-{datetime.now().strftime('%m%d%H%M')}"
+                        novo_at = Atendimento(
+                            codigo=cod, cliente_id=cli_db.id, veiculo_id=None,
+                            status="Em Andamento", valor_total=valor_final,
+                            data_criacao=obter_hora_local().isoformat(), criador="Sistema"
+                        )
+                        db.add(novo_at)
+                        db.flush()
                         
-                    for s_id, v in servicos_extra.items():
-                        db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=s_id, valor_cobrado=v))
-                        
-                    db.commit()
-                    st.session_state['success_msg'] = f"OS {codigo_seq} enviada ao Pátio!"
-                    st.rerun()
-                else:
-                    st.error("Selecione um cliente.")
+                        if item_selecionado != "Nenhum serviço":
+                            db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=servico_opcoes[item_selecionado].id, valor_cobrado=servico_opcoes[item_selecionado].preco_venda))
+                            
+                        for s_id, v in servicos_extra.items():
+                            db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=s_id, valor_cobrado=v))
+                            
+                        for p_id, v in produtos_extra.items():
+                            db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Produto", referencia_id=p_id, valor_cobrado=v))
+                            
+                        db.commit()
+                        st.session_state['fast_add_extra'] = 0
+                        st.session_state['fast_add_prod'] = 0
+                        st.session_state['success_msg'] = f"Atendimento {cod} iniciado!"
+                        st.rerun()
 
     # ==========================================
     # ABA 2: PÁTIO (EM ANDAMENTO)
     # ==========================================
-    with tab2:
-        # Título com a Flag
+    with aba_patio:
         st.markdown(f"<div style='margin-top:10px; margin-bottom:12px;'><span style='font-size:16px; font-weight:500;'>Em Andamento</span> <span class='red-badge'>{qtd_andamento}</span></div>", unsafe_allow_html=True)
-        
-        andamento = db.query(Atendimento).filter(Atendimento.status == "Em andamento").order_by(Atendimento.id.asc()).all()
-        if andamento:
-            now = obter_hora_local()
-            for at in andamento:
+        if em_andamento:
+            now = datetime.now()
+            for at in em_andamento:
                 cli = db.query(Cliente).filter(Cliente.id == at.cliente_id).first()
                 cli_nome = cli.nome if cli else "Desconhecido"
-                carro = cli.modelo_veiculo if cli and cli.modelo_veiculo else "Sem Carro"
-                placa = cli.placa_veiculo if cli and cli.placa_veiculo else "Sem Placa"
+                carro = cli.marca_modelo if cli and cli.marca_modelo else "Sem Veículo"
+                placa = cli.placa if cli and cli.placa else "Sem Placa"
                 
-                dt_criacao = datetime.fromisoformat(at.data_criacao)
+                dt_criacao = datetime.fromisoformat(at.data_criacao) if at.data_criacao else now
                 tempo_decorrido = formatar_tempo(now - dt_criacao)
                 
                 with st.container(border=True):
@@ -479,17 +499,18 @@ def render_fast_launch():
                     delta_min = (dt_fim - dt_cria).total_seconds() / 60.0
                     tempo_total_min.append(delta_min)
                     
-                    itens_at = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == a.id, ItemAtendimento.tipo == "Serviço").all()
+                    # Filtra de maneira mais branda para não perder registros por codificação
+                    itens_at = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == a.id).all()
                     for i in itens_at:
-                        total_servicos_entregues += 1
-                        s_nome = i.descricao or "Serviço Avulso" # Fallback se não tiver descricao
-                        if i.referencia_id:
+                        if i.referencia_id and i.tipo and "Serv" in i.tipo:
+                            total_servicos_entregues += 1
+                            s_nome = i.descricao or "Serviço Avulso"
                             s = db.query(Servico).filter(Servico.id == i.referencia_id).first()
                             if s: s_nome = s.nome
-                            
-                        servicos_count[s_nome] = servicos_count.get(s_nome, 0) + 1
-                        if s_nome not in tempos_servicos: tempos_servicos[s_nome] = []
-                        tempos_servicos[s_nome].append(delta_min)
+                                
+                            servicos_count[s_nome] = servicos_count.get(s_nome, 0) + 1
+                            if s_nome not in tempos_servicos: tempos_servicos[s_nome] = []
+                            tempos_servicos[s_nome].append(delta_min)
                 except: pass
 
         tempo_medio_global = int(sum(tempo_total_min)/len(tempo_total_min)) if tempo_total_min else 0
@@ -571,7 +592,7 @@ def render_fast_launch():
         # Bloco 5: Insight Geral
         if total_dia:
             percep = "Rotatividade altíssima" if len(total_dia) >= 8 else "Fluxo constante" if len(total_dia) >= 4 else "Movimento leve"
-            percep += " com foco em serviços premium." if tkm > 150 else " focado em volume e giro rápido."
+            percep += " focado em serviços premium." if tkm > 150 else " focado em volume e giro rápido."
             
             melhoria = "Manter o ritmo operacional."
             if tempo_medio_global > 90:
@@ -586,8 +607,8 @@ def render_fast_launch():
                     <span style='font-size:12px; color:#C5A059; font-weight:700; text-transform:uppercase;'>Insight Gerencial</span>
                 </div>
                 <p style='font-size:12px; line-height:1.5; color:rgba(255,255,255,0.9); margin:0;'>
-                    <b>Percepção:</b> {percep}<br><br>
-                    <b>Melhoria Sugerida:</b> {melhoria}
+                    <b style='color:#C5A059;'>Percepção:</b> <span style='color: white;'>{percep}</span><br><br>
+                    <b style='color:#C5A059;'>Melhoria Sugerida:</b> <span style='color: white;'>{melhoria}</span>
                 </p>
             </div>
             """

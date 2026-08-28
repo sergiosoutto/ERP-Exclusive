@@ -218,7 +218,7 @@ def main():
         except:
             st.markdown(f"<h2 style='text-align: center; color: white; font-size: 22px;'>CRIVO</h2>", unsafe_allow_html=True)
             
-        st.markdown(f"<p style='text-align: center; font-size: 11px; margin-top:-10px; color: rgba(255,255,255,0.7);'>Acesso: <b>{st.session_state['user_role'].upper()}</b></p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align: center; font-size: 11px; margin-top:-10px; color: rgba(255,255,255,0.7);'>Acesso: <span style='color: white; font-weight: 800;'>{st.session_state['user_role'].upper()}</span></p>", unsafe_allow_html=True)
         st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
         
         st.markdown("<p style='font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 5px;'>Filtro Global</p>", unsafe_allow_html=True)
