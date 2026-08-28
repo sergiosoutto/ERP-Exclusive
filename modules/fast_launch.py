@@ -328,8 +328,8 @@ def render_fast_launch():
             cliente_opcoes = ["-- Selecione o Cliente --"]
             clientes = db.query(Cliente).all()
             for c in clientes:
-                if termo in remover_acentos(c.nome.lower()) or (c.placa and termo in remover_acentos(c.placa.lower())):
-                    cliente_opcoes.append(f"{c.nome} ({c.placa or 'Sem Placa'})")
+                if termo in remover_acentos(c.nome.lower()) or (c.placa_veiculo and termo in remover_acentos(c.placa_veiculo.lower())):
+                    cliente_opcoes.append(f"{c.nome} ({c.placa_veiculo or 'Sem Placa'})")
                     
             cli_sel = st.selectbox("Selecione um Cliente", cliente_opcoes, index=0)
             
@@ -424,8 +424,8 @@ def render_fast_launch():
             for at in em_andamento:
                 cli = db.query(Cliente).filter(Cliente.id == at.cliente_id).first()
                 cli_nome = cli.nome if cli else "Desconhecido"
-                carro = cli.marca_modelo if cli and cli.marca_modelo else "Sem Veículo"
-                placa = cli.placa if cli and cli.placa else "Sem Placa"
+                carro = cli.modelo_veiculo if cli and cli.modelo_veiculo else "Sem Veículo"
+                placa = cli.placa_veiculo if cli and cli.placa_veiculo else "Sem Placa"
                 
                 dt_criacao = datetime.fromisoformat(at.data_criacao) if at.data_criacao else now
                 tempo_decorrido = formatar_tempo(now - dt_criacao)
