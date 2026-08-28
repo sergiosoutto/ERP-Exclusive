@@ -419,7 +419,10 @@ def render_fast_launch():
                     cli_codigo = cliente_selecionado.split(" |")[0]
                     cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
                     
-                    codigo_seq = f"OS-{db.query(Atendimento).count()+1:04d}"
+                    last_at = db.query(Atendimento).order_by(Atendimento.id.desc()).first()
+                    next_id = (last_at.id + 1) if last_at else 1
+                    codigo_seq = f"OS-{next_id:04d}"
+                    
                     total_atendimento = valor_final + sum(servicos_extra.values())
                     
                     novo_at = Atendimento(
