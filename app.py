@@ -223,18 +223,17 @@ def main():
             "Fluxo do dia", 
             "Transações", 
             "Gestão Financeira", 
+            "Estoque & Insumos",
             "Gestão de Pessoal",
             "CRM & Fidelidade",
             "Cadastros",
-            "Integração Fiscal",
-            "Importar / Exportar",
             "Central Analítica"
         ]
         
         icons = [
             "cart-plus", "arrow-left-right", "wallet2",
-            "people", "person-badge", "database-add", "receipt",
-            "cloud-arrow-up", "bar-chart-line"
+            "box-seam", "people", "person-badge", "database-add", 
+            "bar-chart-line"
         ]
         
         from streamlit_option_menu import option_menu
@@ -289,6 +288,14 @@ def main():
     elif selected == "Cadastros":
         from modules.cadastros import render_cadastros
         render_cadastros()
+        
+    elif selected == "Gestão de Pessoal":
+        from modules.personnel import render_personnel
+        render_personnel()
+        
+    elif selected == "Estoque & Insumos":
+        from modules.inventory import render_inventory
+        render_inventory()
         
     elif selected == "CRM & Fidelidade":
         from modules.crm import render_crm

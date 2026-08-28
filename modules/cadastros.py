@@ -186,37 +186,6 @@ def dialog_novo_usuario():
 # ==========================================
 # Dialogs de Colaboradores, Produtos e Serviços
 # ==========================================
-@dialog_decorator("Novo Colaborador")
-def dialog_novo_colaborador():
-    db = next(get_db())
-    nome = st.text_input("Nome do Colaborador")
-    cargo = st.text_input("Cargo")
-    telefone = st.text_input("Telefone")
-    
-    if st.button("Salvar Colaborador", type="primary", use_container_width=True):
-        if nome:
-            nc = Colaborador(nome=nome, cargo=cargo, telefone=telefone)
-            db.add(nc)
-            db.commit()
-            st.toast("Colaborador criado!", icon="✅")
-            st.rerun()
-
-@dialog_decorator("Novo Insumo (Produto)")
-def dialog_novo_produto():
-    db = next(get_db())
-    nome = st.text_input("Nome do Insumo")
-    unidade = st.text_input("Unidade de Medida (ex: un, ml, g)")
-    custo = st.number_input("Custo por Unidade (R$)", min_value=0.0, format="%.4f")
-    estoque = st.number_input("Qtd em Estoque", min_value=0.0, format="%.2f")
-    
-    if st.button("Salvar Insumo", type="primary", use_container_width=True):
-        if nome:
-            np = Produto(nome=nome, unidade_medida=unidade, custo_unidade=custo, quantidade_estoque=estoque)
-            db.add(np)
-            db.commit()
-            st.toast("Insumo criado!", icon="✅")
-            st.rerun()
-
 @dialog_decorator("Novo Serviço")
 def dialog_novo_servico():
     db = next(get_db())
@@ -287,11 +256,9 @@ def render_cadastros():
     
     db = next(get_db())
     
-    t_cat, t_banco, t_colab, t_insumo, t_servico, t_pag, t_usr, t_meta = st.tabs([
+    t_cat, t_banco, t_servico, t_pag, t_usr, t_meta = st.tabs([
         "Categorias", 
         "Bancos",
-        "Colaboradores",
-        "Insumos",
         "Serviços",
         "Formas de Pgto",
         "Usuários",
@@ -356,49 +323,6 @@ def render_cadastros():
                 st.markdown(html_card, unsafe_allow_html=True)
                 if st.button("Editar / Excluir", key=f"edit_banco_{c.id}"): dialog_gerenciar_conta(c.id)
 
-    # --- TAB 3: COLABORADORES ---
-    with t_colab:
-        col_t1, col_t2 = st.columns([4, 1])
-        with col_t1: st.markdown(f"### {gold_icon('people')} Colaboradores", unsafe_allow_html=True)
-        with col_t2:
-            if st.button("+ Novo Colaborador", use_container_width=True, type="primary"): dialog_novo_colaborador()
-                
-        st.markdown("---")
-        colabs = db.query(Colaborador).all()
-        if colabs:
-            for c in colabs:
-                with st.expander(f"{c.nome} - {c.cargo or 'Sem cargo'}"):
-                    c1, c2, c3 = st.columns([2,2,1])
-                    with c1: st.write(f"**Telefone:** {c.telefone or 'N/I'}")
-                    with c2: st.write(f"**Status:** {'Ativo' if c.ativo else 'Inativo'}")
-                    with c3:
-                        if st.button("Excluir", key=f"del_colab_{c.id}", type="primary"):
-                            db.delete(c)
-                            db.commit()
-                            st.rerun()
-
-    # --- TAB 4: INSUMOS ---
-    with t_insumo:
-        col_p1, col_p2 = st.columns([4, 1])
-        with col_p1: st.markdown(f"### {gold_icon('box-seam')} Insumos (Estoque)", unsafe_allow_html=True)
-        with col_p2:
-            if st.button("+ Novo Insumo", use_container_width=True, type="primary"): dialog_novo_produto()
-                
-        st.markdown("---")
-        produtos = db.query(Produto).all()
-        if produtos:
-            for p in produtos:
-                with st.expander(f"{p.nome}"):
-                    p1, p2, p4 = st.columns([1,1,1])
-                    with p1: st.write(f"**Custo Unitário:** R$ {p.custo_unidade:,.4f}")
-                    with p2: st.write(f"**Estoque:** {p.quantidade_estoque} {p.unidade_medida}")
-                    with p4:
-                        if st.button("Excluir", key=f"del_prod_{p.id}", type="primary"):
-                            db.delete(p)
-                            db.commit()
-                            st.rerun()
-
-    # --- TAB 5: SERVIÇOS ---
     with t_servico:
         col_s1, col_s2 = st.columns([4, 1])
         with col_s1: st.markdown(f"### {gold_icon('check2-circle')} Serviços de Estética", unsafe_allow_html=True)
