@@ -263,13 +263,21 @@ def render_fast_launch():
                 white-space: nowrap !important;
             }
             
-            /* Fazer a primeira pílula (Concluir) ficar dourada por padrão */
-            div[data-testid="stPills"] > div > button:nth-child(1) {
+            /* Fazer a primeira pílula (Concluir) ficar dourada por padrão (Cobertura Ampla de DOM) */
+            div[data-testid="stPills"] button:nth-child(1),
+            div[data-testid="stPills"] > div > button:first-of-type,
+            div[data-testid="stPills"] label:nth-child(1) > div {
                 background-color: #C5A059 !important;
                 color: white !important;
                 border-color: #C5A059 !important;
             }
-            div[data-testid="stPills"] > div > button:nth-child(1):hover {
+            div[data-testid="stPills"] button:nth-child(1) p,
+            div[data-testid="stPills"] > div > button:first-of-type p,
+            div[data-testid="stPills"] label:nth-child(1) > div p {
+                color: white !important;
+            }
+            div[data-testid="stPills"] button:nth-child(1):hover,
+            div[data-testid="stPills"] > div > button:first-of-type:hover {
                 background-color: #D4B06A !important;
             }
             
@@ -433,69 +441,156 @@ def render_fast_launch():
             st.info("Nenhum concluído hoje.")
 
     # ==========================================
-    # ABA 4: RESUMO (GRÁFICOS)
+    # ABA 4: RESUMO (GRÁFICOS E KPIs)
     # ==========================================
     with tab4:
-        st.markdown(f"<div style='margin-top:10px; margin-bottom:12px;'><span style='font-size:16px; font-weight:500;'>{gold_icon('chart')} Desempenho</span></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='margin-top:10px; margin-bottom:12px;'><span style='font-size:16px; font-weight:500;'>{gold_icon('chart')} Relatório Executivo</span></div>", unsafe_allow_html=True)
         hoje_str = hoje.strftime("%Y-%m-%d")
         total_dia = db.query(Atendimento).filter(Atendimento.data_criacao >= hoje_str, Atendimento.status == "Finalizado").all()
         
-        valor_total = sum(a.valor_total for a in total_dia)
-        ticket_medio = (valor_total / len(total_dia)) if total_dia else 0
+        faturamento = sum(a.valor_total for a in total_dia)
+        tkm = (faturamento / len(total_dia)) if total_dia else 0
         
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown("<div class='premium-card' style='text-align:center; padding:10px!important;'><span style='font-size:12px;'>Faturamento</span><br><b style='font-size:18px; color:var(--success);'>R$ " + f"{valor_total:,.2f}" + "</b></div>", unsafe_allow_html=True)
-        with c2:
-            st.markdown("<div class='premium-card' style='text-align:center; padding:10px!important;'><span style='font-size:12px;'>Ticket Médio</span><br><b style='font-size:18px; color:var(--accent);'>R$ " + f"{ticket_medio:,.2f}" + "</b></div>", unsafe_allow_html=True)
-            
-        st.markdown("---")
-        
-        st.markdown(f"#### {gold_icon('fire')} Horas Quentes", unsafe_allow_html=True)
-        horas_count = {}
+        # Agrupar Pagamentos
+        pgtos = {}
         for a in total_dia:
-            if a.data_conclusao:
-                h = datetime.fromisoformat(a.data_conclusao).hour
-                horas_count[f"{h}h"] = horas_count.get(f"{h}h", 0) + 1
-                
-        if horas_count:
-            df_horas = pd.DataFrame(list(horas_count.items()), columns=["Hora", "Concluídos"]).set_index("Hora")
-            st.bar_chart(df_horas)
-        else:
-            st.write("Sem dados.")
+            fp = a.forma_pagamento or "Não Informado"
+            pgtos[fp] = pgtos.get(fp, 0) + a.valor_total
             
-        st.markdown(f"#### {gold_icon('wrench')} Serviços Executados", unsafe_allow_html=True)
-        servicos_count = {}
+        pgtos_sorted = sorted(pgtos.items(), key=lambda x: x[1], reverse=True)[:3]
+        pgto_html = "".join([f"<div style='display:flex; justify-content:space-between; font-size:11px; margin-top:3px; color:var(--text-sec); border-bottom: 1px dashed rgba(0,0,0,0.05); padding-bottom: 2px;'><span>{k}</span> <b>R$ {v:,.2f}</b></div>" for k, v in pgtos_sorted])
+        if not pgto_html: pgto_html = "<div style='font-size:11px; color:#999; text-align:center;'>Sem pagamentos hoje</div>"
+        
+        # Processar Tempos e Serviços
+        total_servicos_entregues = 0
         tempos_servicos = {}
-        if total_dia:
-            ids_hoje = [a.id for a in total_dia]
-            itens_hoje = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id.in_(ids_hoje), ItemAtendimento.tipo == "Serviço").all()
+        servicos_count = {}
+        horas_count = {}
+        tempo_total_min = []
+        
+        for a in total_dia:
+            if a.data_conclusao and a.data_criacao:
+                try:
+                    dt_cria = datetime.fromisoformat(a.data_criacao)
+                    dt_fim = datetime.fromisoformat(a.data_conclusao)
+                    h = dt_fim.hour
+                    horas_count[f"{h}h"] = horas_count.get(f"{h}h", 0) + 1
+                    
+                    delta_min = (dt_fim - dt_cria).total_seconds() / 60.0
+                    tempo_total_min.append(delta_min)
+                    
+                    itens_at = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == a.id, ItemAtendimento.tipo == "Serviço").all()
+                    for i in itens_at:
+                        total_servicos_entregues += 1
+                        s_nome = i.descricao or "Serviço Avulso" # Fallback se não tiver descricao
+                        if i.referencia_id:
+                            s = db.query(Servico).filter(Servico.id == i.referencia_id).first()
+                            if s: s_nome = s.nome
+                            
+                        servicos_count[s_nome] = servicos_count.get(s_nome, 0) + 1
+                        if s_nome not in tempos_servicos: tempos_servicos[s_nome] = []
+                        tempos_servicos[s_nome].append(delta_min)
+                except: pass
+
+        tempo_medio_global = int(sum(tempo_total_min)/len(tempo_total_min)) if tempo_total_min else 0
+        
+        # Bloco 1: KPIs Básicos
+        st.markdown(f"""
+        <div style='display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;'>
+            <div class='premium-card' style='padding:12px!important; text-align:center;'>
+                <div style='font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase;'>Serviços Entregues</div>
+                <div style='font-size:22px; font-weight:800; color:var(--text-main); margin-top:2px;'>{total_servicos_entregues}</div>
+            </div>
+            <div class='premium-card' style='padding:12px!important; text-align:center;'>
+                <div style='font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase;'>Tempo Médio Geral</div>
+                <div style='font-size:22px; font-weight:800; color:var(--text-main); margin-top:2px;'>{tempo_medio_global} min</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Bloco 2: Faturamento e TKM
+        st.markdown(f"""
+        <div style='display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;'>
+            <div class='premium-card' style='padding:12px!important;'>
+                <div style='font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; text-align:center;'>Faturamento Total</div>
+                <div style='font-size:18px; font-weight:800; color:var(--success); text-align:center; margin-bottom:8px;'>R$ {faturamento:,.2f}</div>
+                <div style='border-top:1px solid #eee; padding-top:6px;'>
+                    {pgto_html}
+                </div>
+            </div>
+            <div class='premium-card' style='padding:12px!important; text-align:center; display:flex; flex-direction:column; justify-content:center;'>
+                <div style='font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase;'>Ticket Médio (TKM)</div>
+                <div style='font-size:20px; font-weight:800; color:var(--accent); margin-top:4px;'>R$ {tkm:,.2f}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Bloco 3: Horas Quentes
+        st.markdown(f"<div style='font-size:13px; font-weight:700; margin-bottom:5px; color:var(--text-main);'>{gold_icon('fire')} Horas Quentes</div>", unsafe_allow_html=True)
+        if horas_count:
+            df_h = pd.DataFrame(list(horas_count.items()), columns=["Hora", "OSs"]).set_index("Hora")
+            st.bar_chart(df_h, height=130)
+            pico = max(horas_count, key=horas_count.get)
+            st.markdown(f"<div style='background:#fcfcfc; padding:8px 12px; border-left:3px solid var(--accent); font-size:11px; color:#555; margin-top:-15px; border-radius:4px;'><b>Insight:</b> Pico de fluxo às <b>{pico}</b> ({horas_count[pico]} entregas).</div>", unsafe_allow_html=True)
+        else:
+            st.info("Sem dados suficientes.")
             
-            for a in total_dia:
-                if not a.data_criacao or not a.data_conclusao:
-                    continue
-                    
-                dt_cria = datetime.fromisoformat(a.data_criacao)
-                dt_fim = datetime.fromisoformat(a.data_conclusao)
-                delta = (dt_fim - dt_cria).total_seconds() / 60.0 # minutos
-                
-                # Pegar itens deste atendimento
-                itens_deste_at = [i for i in itens_hoje if i.atendimento_id == a.id]
-                for i in itens_deste_at:
-                    s = db.query(Servico).filter(Servico.id == i.referencia_id).first()
-                    if s:
-                        servicos_count[s.nome] = servicos_count.get(s.nome, 0) + 1
-                        if s.nome not in tempos_servicos:
-                            tempos_servicos[s.nome] = []
-                        tempos_servicos[s.nome].append(delta)
-                    
+        st.markdown("<br>", unsafe_allow_html=True)
+            
+        # Bloco 4: Serviços Executados
+        st.markdown(f"<div style='font-size:13px; font-weight:700; margin-bottom:5px; color:var(--text-main);'>{gold_icon('wrench')} Execução por Serviço</div>", unsafe_allow_html=True)
         if servicos_count:
-            df_serv = pd.DataFrame(list(servicos_count.items()), columns=["Serviço", "Qtd"]).set_index("Serviço")
-            st.bar_chart(df_serv, color="#C5A059")
+            df_s = pd.DataFrame(list(servicos_count.items()), columns=["Serviço", "Qtd"]).set_index("Serviço")
+            st.bar_chart(df_s, color="#C5A059", height=130)
+            top_s = max(servicos_count, key=servicos_count.get)
+            st.markdown(f"<div style='background:#fcfcfc; padding:8px 12px; border-left:3px solid var(--accent); font-size:11px; color:#555; margin-top:-15px; border-radius:4px; margin-bottom:15px;'><b>Insight:</b> <b>{top_s}</b> foi o carro-chefe hoje.</div>", unsafe_allow_html=True)
             
-            st.markdown(f"#### {gold_icon('clock')} Tempo Médio Gasto", unsafe_allow_html=True)
-            for nome_serv, tempos in tempos_servicos.items():
-                media_min = sum(tempos)/len(tempos)
-                st.markdown(f"<p style='margin:0; font-size:14px;'><b>{nome_serv}</b>: {int(media_min)} minutos</p>", unsafe_allow_html=True)
+            # Lista Detalhada
+            html_lista = "<div style='background:white; border:1px solid #eee; border-radius:8px; padding:10px;'>"
+            html_lista += f"<div style='font-size:11px; font-weight:700; color:var(--text-sec); margin-bottom:8px; border-bottom:1px solid #eee; padding-bottom:4px;'>Total: {total_servicos_entregues} un | Média Geral: {tempo_medio_global} min</div>"
+            
+            for s_nome, t_list in tempos_servicos.items():
+                m_min = int(sum(t_list)/len(t_list))
+                q_s = servicos_count[s_nome]
+                html_lista += f"""
+                <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;'>
+                    <span style='font-size:12px; font-weight:600; color:#333;'>{s_nome}</span>
+                    <div style='text-align:right;'>
+                        <span style='font-size:10px; background:#f0f0f0; padding:2px 6px; border-radius:10px; margin-right:4px; color:#555;'>{q_s} un</span>
+                        <span style='font-size:10px; color:white; background:var(--accent); padding:2px 6px; border-radius:10px; font-weight:600;'>{m_min} min/méd</span>
+                    </div>
+                </div>
+                """
+            html_lista += "</div>"
+            st.markdown(html_lista, unsafe_allow_html=True)
+        else:
+            st.info("Nenhum serviço registrado.")
+            
+        st.markdown("<br>", unsafe_allow_html=True)
+            
+        # Bloco 5: Insight Geral
+        if total_dia:
+            percep = "Rotatividade altíssima" if len(total_dia) >= 8 else "Fluxo constante" if len(total_dia) >= 4 else "Movimento leve"
+            percep += " com foco em serviços premium." if tkm > 150 else " focado em volume e giro rápido."
+            
+            melhoria = "Manter o ritmo operacional."
+            if tempo_medio_global > 90:
+                melhoria = "Tempo médio elevado. Tente otimizar a triagem e transição de veículos para reduzir o gargalo de 90+ min."
+            elif tkm < 50:
+                melhoria = "Ticket médio baixo. Oportunidade para ofertar serviços adicionais (cross-sell) no balcão."
+                
+            html_insight = f"""
+            <div style='background: linear-gradient(145deg, #001C25, #002B38); padding:15px; border-radius:12px; color:white; box-shadow: 0 4px 10px rgba(0,0,0,0.1);'>
+                <div style='display:flex; align-items:center; gap:6px; margin-bottom:8px;'>
+                    <span style='font-size:16px;'>🤖</span>
+                    <span style='font-size:12px; color:#C5A059; font-weight:700; text-transform:uppercase;'>Insight Gerencial</span>
+                </div>
+                <p style='font-size:12px; line-height:1.5; color:rgba(255,255,255,0.9); margin:0;'>
+                    <b>Percepção:</b> {percep}<br><br>
+                    <b>Melhoria Sugerida:</b> {melhoria}
+                </p>
+            </div>
+            """
+            st.markdown(html_insight, unsafe_allow_html=True)
         else:
             st.write("Sem dados.")
