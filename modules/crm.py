@@ -14,14 +14,14 @@ def dialog_editar_cliente(cliente_id):
         
     nome = st.text_input("Nome", value=c.nome)
     telefone = st.text_input("Celular/WhatsApp", value=c.telefone or "")
-    veiculo = st.text_input("Veículo (Modelo/Cor)", value=c.veiculo or "")
-    placa = st.text_input("Placa", value=c.placa or "")
+    veiculo = st.text_input("Veículo (Modelo/Cor)", value=c.modelo_veiculo or "")
+    placa = st.text_input("Placa", value=c.placa_veiculo or "")
     
     if st.button("Salvar Alterações", type="primary", use_container_width=True):
         c.nome = nome
         c.telefone = telefone
-        c.veiculo = veiculo
-        c.placa = placa
+        c.modelo_veiculo = veiculo
+        c.placa_veiculo = placa
         db.commit()
         st.rerun()
 
@@ -72,7 +72,7 @@ def render_crm():
         if busca_nome:
             b = busca_nome.lower()
             nome_c = (c.nome or "").lower()
-            placa_c = (c.placa or "").lower()
+            placa_c = (c.placa_veiculo or "").lower()
             if b not in nome_c and b not in placa_c:
                 continue
                 
@@ -96,8 +96,8 @@ def render_crm():
             "id": c.id,
             "Nome": c.nome or "-",
             "Celular": c.telefone or "-",
-            "Veículo": c.veiculo or "-",
-            "Placa": c.placa or "-",
+            "Veículo": c.modelo_veiculo or "-",
+            "Placa": c.placa_veiculo or "-",
             "Gasto Total": gasto_total,
             "Qtd OS": qtd,
             "Última Visita": ultima_visita,
