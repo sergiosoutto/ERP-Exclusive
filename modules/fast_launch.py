@@ -342,9 +342,9 @@ def render_fast_launch():
                     st.markdown(f"<div style='font-size:14px; font-weight:600; color:var(--text-main); margin-bottom:5px;'>O que será feito no veículo de {cli_db.nome}?</div>", unsafe_allow_html=True)
                     
                     # Interface Ultra Rápida
-                    servicos = db.query(Servico).filter(Servico.ativo == True).all()
+                    servicos = db.query(Servico).all()
                     servico_opcoes = {"Nenhum serviço": None}
-                    for s in servicos: servico_opcoes[f"{s.nome} - R$ {s.preco_venda:.2f}"] = s
+                    for s in servicos: servico_opcoes[f"{s.nome} - R$ {s.preco_padrao:.2f}"] = s
                     
                     item_selecionado = st.selectbox("Serviço Principal", list(servico_opcoes.keys()))
                     
@@ -364,7 +364,7 @@ def render_fast_launch():
                         for i in range(st.session_state['fast_add_extra']):
                             k = st.selectbox(f"Serviço Extra {i+1}", list(servico_opcoes.keys()), key=f"ex_s_{i}")
                             if k != "Nenhum serviço":
-                                servicos_extra[servico_opcoes[k].id] = servico_opcoes[k].preco_venda
+                                servicos_extra[servico_opcoes[k].id] = servico_opcoes[k].preco_padrao
                         st.markdown("</div>", unsafe_allow_html=True)
                         
                     if st.session_state.get('fast_add_prod', 0) > 0:
@@ -383,7 +383,7 @@ def render_fast_launch():
                     
                     valor_soma = 0.0
                     if item_selecionado != "Nenhum serviço":
-                        valor_soma += servico_opcoes[item_selecionado].preco_venda
+                        valor_soma += servico_opcoes[item_selecionado].preco_padrao
                     valor_soma += sum(servicos_extra.values())
                     valor_soma += sum(produtos_extra.values())
                     
@@ -401,7 +401,7 @@ def render_fast_launch():
                         db.flush()
                         
                         if item_selecionado != "Nenhum serviço":
-                            db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=servico_opcoes[item_selecionado].id, valor_cobrado=servico_opcoes[item_selecionado].preco_venda))
+                            db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=servico_opcoes[item_selecionado].id, valor_cobrado=servico_opcoes[item_selecionado].preco_padrao))
                             
                         for s_id, v in servicos_extra.items():
                             db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=s_id, valor_cobrado=v))
