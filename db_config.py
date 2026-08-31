@@ -4,11 +4,17 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, Date, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+debug_msg = "No error"
 try:
     import streamlit as st
-    env_url = st.secrets.get("DATABASE_URL", os.environ.get("DATABASE_URL", "sqlite:///data/erp.db"))
-except:
+    if "DATABASE_URL" in st.secrets:
+        env_url = st.secrets["DATABASE_URL"]
+    else:
+        env_url = os.environ.get("DATABASE_URL", "sqlite:///data/erp.db")
+        debug_msg = "Key DATABASE_URL not in st.secrets"
+except Exception as e:
     env_url = os.environ.get("DATABASE_URL", "sqlite:///data/erp.db")
+    debug_msg = f"Exception: {str(e)}"
 
 # SQLAlchemy 1.4+ requer 'postgresql://' ao invés de 'postgres://'
 if env_url.startswith("postgres://"):

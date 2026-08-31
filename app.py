@@ -253,9 +253,11 @@ def main():
         st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
         
         # DEBUG INDICATOR
-        from db_config import DATABASE_URL
+        from db_config import DATABASE_URL, debug_msg
         db_type = "☁️ Supabase (Nuvem)" if "postgres" in DATABASE_URL else "💻 SQLite (Local)"
         st.caption(f"Banco: {db_type}")
+        if db_type == "💻 SQLite (Local)":
+            st.caption(f"Debug: {debug_msg}")
         
         if st.button("Sair", use_container_width=True):
             st.session_state['logged_in'] = False
