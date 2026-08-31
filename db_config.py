@@ -4,11 +4,20 @@ from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Float, Boolean, Date, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Configuramos o SQLite para desenvolvimento local, com fácil transição para PostgreSQL via Supabase
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///data/erp.db")
+try:
+    import streamlit as st
+    env_url = st.secrets.get("DATABASE_URL", os.environ.get("DATABASE_URL", "sqlite:///data/erp.db"))
+except:
+    env_url = os.environ.get("DATABASE_URL", "sqlite:///data/erp.db")
 
-# Conexão com o banco de dados
-engine = create_engine(DATABASE_URL, echo=False)
+# SQLAlchemy 1.4+ requer 'postgresql://' ao invés de 'postgres://'
+if env_url.startswith("postgres://"):
+    env_url = env_url.replace("postgres://", "postgresql://", 1)
+
+DATABASE_URL = env_url
+
+# Conexão com o banco de dados (pool_pre_ping evita quedas de conexão no PostgreSQL)
+engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
