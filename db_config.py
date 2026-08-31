@@ -22,14 +22,18 @@ if env_url.startswith("postgres://"):
 
 DATABASE_URL = env_url
 
-# Conexão com o banco de dados
-# Para PostgreSQL/Supabase: SSL obrigatório
+# Para PostgreSQL/Supabase: garante SSL e compatibilidade com pooler
 if "postgresql" in DATABASE_URL or "postgres" in DATABASE_URL:
+    # Adiciona sslmode=require na URL se não estiver presente
+    if "sslmode" not in DATABASE_URL:
+        sep = "&" if "?" in DATABASE_URL else "?"
+        DATABASE_URL = DATABASE_URL + sep + "sslmode=require"
     engine = create_engine(
         DATABASE_URL,
         echo=False,
         pool_pre_ping=True,
-        connect_args={"sslmode": "require"}
+        pool_size=2,
+        max_overflow=5
     )
 else:
     engine = create_engine(DATABASE_URL, echo=False)
