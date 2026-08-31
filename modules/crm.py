@@ -66,6 +66,14 @@ def render_crm():
     
     # Dados
     clientes = db.query(Cliente).all()
+    todas_oss = db.query(Atendimento).filter(Atendimento.status == "Finalizado").all()
+    
+    oss_por_cliente = {}
+    for os_obj in todas_oss:
+        if os_obj.cliente_id not in oss_por_cliente:
+            oss_por_cliente[os_obj.cliente_id] = []
+        oss_por_cliente[os_obj.cliente_id].append(os_obj)
+        
     dados_crm = []
     
     for c in clientes:
@@ -76,7 +84,7 @@ def render_crm():
             if b not in nome_c and b not in placa_c:
                 continue
                 
-        oss = db.query(Atendimento).filter(Atendimento.cliente_id == c.id, Atendimento.status == "Finalizado").all()
+        oss = oss_por_cliente.get(c.id, [])
         gasto_total = sum(os.valor_total for os in oss)
         qtd = len(oss)
         selo = get_selo(gasto_total)

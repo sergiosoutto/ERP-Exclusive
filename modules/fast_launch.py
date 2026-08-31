@@ -617,6 +617,19 @@ def render_fast_launch():
         horas_count = {}
         tempo_total_min = []
         
+        # OTIMIZAÇÃO: Buscar todos os itens e serviços de uma vez
+        atendimentos_ids = [a.id for a in total_dia]
+        todos_itens = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id.in_(atendimentos_ids)).all() if atendimentos_ids else []
+        
+        # Mapear itens por atendimento
+        itens_por_atendimento = {}
+        for item in todos_itens:
+            itens_por_atendimento.setdefault(item.atendimento_id, []).append(item)
+            
+        # Mapear serviços globalmente
+        todos_servicos = db.query(Servico).all()
+        servico_map = {s.id: s for s in todos_servicos}
+
         for a in total_dia:
             if a.data_conclusao and a.data_criacao:
                 try:

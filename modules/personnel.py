@@ -138,9 +138,9 @@ def render_personnel():
         st.markdown("#### Histórico de Vales em Aberto (Ainda não descontados)")
         vales_abertos = db.query(Adiantamento).filter(Adiantamento.recibo_id == None).order_by(Adiantamento.data.desc()).all()
         if vales_abertos:
+            colabs_map = {c.id: c.nome for c in todos_colabs}
             for v in vales_abertos:
-                cv = db.query(Colaborador).filter(Colaborador.id == v.colaborador_id).first()
-                nome_cv = cv.nome if cv else "Desconhecido"
+                nome_cv = colabs_map.get(v.colaborador_id, "Desconhecido")
                 with st.container(border=True):
                     x1, x2, x3, x4 = st.columns([1, 2, 2, 1])
                     dt_v = v.data.strftime('%d/%m/%Y') if v.data else "N/I"
@@ -260,8 +260,10 @@ def render_personnel():
         
         recibos_hist = db.query(Recibo).order_by(Recibo.id.desc()).all()
         if recibos_hist:
+            todos_c = db.query(Colaborador).all()
+            colabs_dict = {c.id: c for c in todos_c}
             for r in recibos_hist:
-                c_r = db.query(Colaborador).filter(Colaborador.id == r.colaborador_id).first()
+                c_r = colabs_dict.get(r.colaborador_id)
                 nome_c = c_r.nome if c_r else "Excluído"
                 
                 with st.container(border=True):
