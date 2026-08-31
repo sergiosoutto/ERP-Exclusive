@@ -224,7 +224,11 @@ class Recibo(Base):
 def init_db():
     if not os.path.exists("data"):
         os.makedirs("data")
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"[init_db] Erro ao criar tabelas: {e}")
+        return
     
     # Auto-migration for weight columns
     with engine.connect() as conn:
