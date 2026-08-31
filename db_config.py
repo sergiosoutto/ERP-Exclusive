@@ -22,8 +22,18 @@ if env_url.startswith("postgres://"):
 
 DATABASE_URL = env_url
 
-# Conexão com o banco de dados (pool_pre_ping evita quedas de conexão no PostgreSQL)
-engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
+# Conexão com o banco de dados
+# Para PostgreSQL/Supabase: SSL obrigatório
+if "postgresql" in DATABASE_URL or "postgres" in DATABASE_URL:
+    engine = create_engine(
+        DATABASE_URL,
+        echo=False,
+        pool_pre_ping=True,
+        connect_args={"sslmode": "require"}
+    )
+else:
+    engine = create_engine(DATABASE_URL, echo=False)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
