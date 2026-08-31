@@ -13,8 +13,12 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-# Inicializa o banco de dados (SQLite local para dev)
-init_db()
+# Inicializa o banco de dados apenas uma vez para não gerar lentidão na nuvem
+@st.cache_resource(show_spinner=False)
+def initialize_database():
+    init_db()
+
+initialize_database()
 
 # ==========================================
 # 2. Injeção de CSS Customizado (Design Apple)

@@ -495,6 +495,10 @@ def render_fast_launch():
                 else:
                     st.error("Selecione um cliente.")
 
+    # Pré-carregar dicionário de clientes para evitar N+1 queries
+    todos_cli = db.query(Cliente).all()
+    clientes_map = {c.id: c for c in todos_cli}
+
     # ==========================================
     # ABA 2: PÁTIO (EM ANDAMENTO)
     # ==========================================
@@ -503,7 +507,7 @@ def render_fast_launch():
         if em_andamento:
             now = datetime.now()
             for at in em_andamento:
-                cli = db.query(Cliente).filter(Cliente.id == at.cliente_id).first()
+                cli = clientes_map.get(at.cliente_id)
                 cli_nome = cli.nome if cli else "Desconhecido"
                 carro = cli.modelo_veiculo if cli and cli.modelo_veiculo else "Sem Veículo"
                 placa = cli.placa_veiculo if cli and cli.placa_veiculo else "Sem Placa"
@@ -518,26 +522,37 @@ def render_fast_launch():
                     st.markdown(f"<p style='margin:2px 0 6px 0; font-size:12px;'>{gold_icon('clock')} {dt_criacao.strftime('%H:%M')} (<b>{tempo_decorrido}</b>) &nbsp;|&nbsp; <b>R$ {at.valor_total:.2f}</b></p>", unsafe_allow_html=True)
                     
                     # Ações da OS usando a Lógica Exata do seu outro app (Pills)
-                    action = st.pills("Ações", ["Concluir", "Editar", "Excluir"], label_visibility="collapsed", key=f"act_os_{at.id}")
-                    if action == "Concluir":
-                        dialog_checkout(at.id)
-                    elif action == "Editar":
+                    op_os = st.pills(
+                        "Ações OS",
+                        options=["Concluir", "Editar", "Excluir"],
+                        key=f"pill_os_{at.id}",
+                        label_visibility="collapsed"
+                    )
+                    
+                    if op_os == "Concluir":
+                        at.status = "Finalizado"
+                        at.data_conclusao = obter_hora_local().isoformat()
+                        db.commit()
+                        st.rerun()
+                    elif op_os == "Editar":
                         dialog_editar_os(at.id)
-                    elif action == "Excluir":
-                        dialog_excluir_os(at.id)
+                    elif op_os == "Excluir":
+                        db.delete(at)
+                        db.commit()
+                        st.rerun()
         else:
-            st.info("Pátio vazio.")
+            st.info("Nenhuma OS no pátio.")
 
     # ==========================================
     # ABA 3: HISTÓRICO CONCLUÍDOS
     # ==========================================
     with tab3:
-        st.markdown(f"<div style='margin-top:10px; margin-bottom:12px;'><span style='font-size:16px; font-weight:500;'>Concluídos Hoje</span> <span class='red-badge'>{qtd_concluido}</span></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='margin-top:10px; margin-bottom:12px;'><span style='font-size:16px; font-weight:500;'>Finalizados</span> <span style='background:#f0f0f0; color:#333; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; margin-left:4px;'>{len(concluidos_hoje)}</span></div>", unsafe_allow_html=True)
         
         concluidos = db.query(Atendimento).filter(Atendimento.status == "Finalizado", Atendimento.data_criacao.like(f"{hoje_str_patio}%")).order_by(Atendimento.id.desc()).all()
         if concluidos:
             for at in concluidos:
-                cli = db.query(Cliente).filter(Cliente.id == at.cliente_id).first()
+                cli = clientes_map.get(at.cliente_id)
                 with st.container(border=True):
                     st.markdown(f"<p style='margin:0; font-size:14px; font-weight:600;'>{cli.nome if cli else 'Desconhecido'} <span style='font-size:10px; font-weight:normal; color:var(--text-sec);'>({at.codigo})</span></p>", unsafe_allow_html=True)
                     st.markdown(f"<p style='margin:2px 0; font-size:12px;'>{gold_icon('check')} Finalizado: {datetime.fromisoformat(at.data_conclusao).strftime('%H:%M') if at.data_conclusao else '-'}</p>", unsafe_allow_html=True)
