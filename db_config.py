@@ -31,9 +31,9 @@ if "postgresql" in DATABASE_URL or "postgres" in DATABASE_URL:
     engine = create_engine(
         DATABASE_URL,
         echo=False,
-        pool_pre_ping=True,
-        pool_size=2,
-        max_overflow=5
+        pool_size=5,
+        max_overflow=10,
+        pool_recycle=1800
     )
 else:
     engine = create_engine(DATABASE_URL, echo=False)

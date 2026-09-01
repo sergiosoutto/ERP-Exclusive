@@ -418,12 +418,13 @@ def render_fast_launch():
         </div>
         """, unsafe_allow_html=True)
         
-    tab1, aba_patio, tab3, tab4 = st.tabs(["Novo", lbl_patio, lbl_hist, "Resumo"])
+    abas_disponiveis = ["Novo", lbl_patio, lbl_hist, "Resumo"]
+    aba_selecionada = st.pills("Submenu", abas_disponiveis, default="Novo", label_visibility="collapsed")
     
     # ==========================================
     # ABA 1: NOVO ATENDIMENTO
     # ==========================================
-    with tab1:
+    if aba_selecionada == "Novo":
         st.markdown(f"<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
         with st.container(border=True):
             busca_cliente = st.text_input("Pesquisar Cliente", placeholder="Nome ou Placa...")
@@ -502,7 +503,7 @@ def render_fast_launch():
     # ==========================================
     # ABA 2: PÁTIO (EM ANDAMENTO)
     # ==========================================
-    with aba_patio:
+    elif aba_selecionada == lbl_patio:
         st.markdown(f"<div style='margin-top:10px; margin-bottom:12px;'><span style='font-size:16px; font-weight:500;'>Em Andamento</span> <span class='red-badge'>{qtd_andamento}</span></div>", unsafe_allow_html=True)
         if em_andamento:
             now = datetime.now()
@@ -546,7 +547,7 @@ def render_fast_launch():
     # ==========================================
     # ABA 3: HISTÓRICO CONCLUÍDOS
     # ==========================================
-    with tab3:
+    elif aba_selecionada == lbl_hist:
         st.markdown(f"<div style='margin-top:10px; margin-bottom:12px;'><span style='font-size:16px; font-weight:500;'>Finalizados</span> <span style='background:#f0f0f0; color:#333; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; margin-left:4px;'>{len(concluidos_hoje)}</span></div>", unsafe_allow_html=True)
         
         concluidos = db.query(Atendimento).filter(Atendimento.status == "Finalizado", Atendimento.data_criacao.like(f"{hoje_str_patio}%")).order_by(Atendimento.id.desc()).all()
@@ -567,7 +568,7 @@ def render_fast_launch():
     # ==========================================
     # ABA 4: RESUMO (GRÁFICOS E KPIs)
     # ==========================================
-    with tab4:
+    elif aba_selecionada == "Resumo":
         st.markdown(f"<div style='margin-top:10px; margin-bottom:12px;'><span style='font-size:16px; font-weight:500;'>{gold_icon('chart')} Relatório Executivo</span></div>", unsafe_allow_html=True)
         
         data_resumo = st.date_input("Filtrar por data", value=hoje.date())
@@ -657,13 +658,13 @@ def render_fast_launch():
                     tempo_total_min.append(delta_min)
                     
                     # Incluir todos os itens que remetem a um serviço, ignorando restrição de texto
-                    itens_at = db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == a.id).all()
+                    itens_at = itens_por_atendimento.get(a.id, [])
                     for i in itens_at:
                         s_nome = "Serviço Avulso"
                         eh_servico = False
                         
                         if i.referencia_id:
-                            s = db.query(Servico).filter(Servico.id == i.referencia_id).first()
+                            s = servico_map.get(i.referencia_id)
                             if s:
                                 s_nome = s.nome
                                 eh_servico = True
