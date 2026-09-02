@@ -154,6 +154,7 @@ class Atendimento(Base):
     data_conclusao = Column(String)
     observacoes = Column(String)
     parcelas = Column(Integer, default=1)
+    data_agendamento = Column(String)
 
 class ItemAtendimento(Base):
     __tablename__ = "itens_atendimento"
@@ -424,6 +425,11 @@ def init_db():
     # Migrations for existing DB
     try:
         db.execute(text("ALTER TABLE usuarios ADD COLUMN pode_excluir BOOLEAN DEFAULT FALSE;"))
+        db.commit()
+    except:
+        db.rollback()
+    try:
+        db.execute(text("ALTER TABLE atendimentos ADD COLUMN data_agendamento VARCHAR;"))
         db.commit()
     except Exception:
         db.rollback()
