@@ -66,8 +66,9 @@ def gold_icon(icon_name):
 @dialog_decorator("Cadastrar Novo Cliente")
 def dialog_novo_cliente():
     db = next(get_db())
-    qtd = db.query(Cliente).count()
-    codigo_seq = f"CLI-{qtd+1:04d}"
+    last_cli = db.query(Cliente).order_by(Cliente.id.desc()).first()
+    next_id = (last_cli.id + 1) if last_cli else 1
+    codigo_seq = f"CLI-{next_id:04d}"
     
     st.info(f"Código: **{codigo_seq}**")
     novo_nome = st.text_input("Nome do Cliente")
