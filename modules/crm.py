@@ -33,6 +33,8 @@ def dialog_excluir_cliente(cliente_id):
     st.markdown("Isso não apagará o histórico financeiro já registrado nas OSs antigas, mas o cliente não aparecerá mais no CRM.")
     
     if st.button("Sim, Excluir Cliente", type="primary", use_container_width=True):
+        from db_config import Atendimento
+        db.query(Atendimento).filter(Atendimento.cliente_id == c.id).update({"cliente_id": None})
         db.delete(c)
         db.commit()
         st.rerun()

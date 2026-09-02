@@ -38,6 +38,8 @@ def render_inventory():
                 with p2: st.write(f"**Estoque:** {p.quantidade_estoque} {p.unidade_medida}")
                 with p4:
                     if st.button("Excluir", key=f"del_prod_{p.id}", type="primary"):
+                        from db_config import ServicoInsumo
+                        db.query(ServicoInsumo).filter(ServicoInsumo.produto_id == p.id).delete()
                         db.delete(p)
                         db.commit()
                         st.rerun()

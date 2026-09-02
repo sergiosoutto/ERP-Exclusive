@@ -90,6 +90,7 @@ def dialog_excluir_os(at_id):
     if st.button("Excluir Permanentemente", type="primary", use_container_width=True):
         at = db.query(Atendimento).filter(Atendimento.id == at_id).first()
         if at:
+            db.query(ItemAtendimento).filter(ItemAtendimento.atendimento_id == at.id).delete()
             db.delete(at)
             db.commit()
             st.session_state['success_msg'] = f"OS excluída."
@@ -535,9 +536,7 @@ def render_fast_launch():
                     elif op_os == "Editar":
                         dialog_editar_os(at.id)
                     elif op_os == "Excluir":
-                        db.delete(at)
-                        db.commit()
-                        st.rerun()
+                        dialog_excluir_os(at.id)
         else:
             st.info("Nenhuma OS no pátio.")
 

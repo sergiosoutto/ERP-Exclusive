@@ -345,6 +345,7 @@ def render_cadastros():
                                 st.write(f"- {p.nome}: {ins.quantidade_utilizada} {p.unidade_medida}")
                     with s2:
                         if st.button("Excluir", key=f"del_serv_{s.id}", type="primary"):
+                            db.query(ServicoInsumo).filter(ServicoInsumo.servico_id == s.id).delete()
                             db.delete(s)
                             db.commit()
                             st.rerun()
