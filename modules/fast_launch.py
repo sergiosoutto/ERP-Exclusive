@@ -190,18 +190,18 @@ def dialog_checkout(at_id):
         
     valor_base = st.number_input("Valor Cobrado (Pode ser alterado p/ desconto/acréscimo)", value=at.valor_total, min_value=0.0)
     
-    # Calculo Juros
+    # Cálculo Juros (Suspenso - O juros será cobrado internamente e não repassado ao cliente)
     juros = 0.0
-    if forma_obj:
-        if parcelas == 1:
-            juros = valor_base * (forma_obj.taxa_juros_vista / 100)
-        else:
-            juros = valor_base * (forma_obj.taxa_juros_parcela / 100) * parcelas
+    # if forma_obj:
+    #     if parcelas == 1:
+    #         juros = valor_base * (forma_obj.taxa_juros_vista / 100)
+    #     else:
+    #         juros = valor_base * (forma_obj.taxa_juros_parcela / 100) * parcelas
             
-    valor_final = valor_base + juros
+    valor_final = valor_base # + juros (Repasse desativado a pedido do usuário)
     
-    if juros > 0:
-        st.write(f"Juros Aplicados: R$ {juros:.2f}")
+    # if juros > 0:
+    #     st.write(f"Juros Aplicados: R$ {juros:.2f}")
     st.markdown(f"### Total a Pagar: R$ {valor_final:.2f}")
     
     # Automate Observation based on discount/addition
@@ -424,6 +424,10 @@ def render_fast_launch():
     # ==========================================
     # ABA 1: NOVO ATENDIMENTO
     # ==========================================
+    # Pré-carregar dicionário de clientes
+    todos_cli = db.query(Cliente).all()
+    clientes_map = {c.id: c for c in todos_cli}
+    
     if aba_selecionada == "Novo":
         st.markdown(f"<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
         with st.container(border=True):
@@ -496,17 +500,13 @@ def render_fast_launch():
                 else:
                     st.error("Selecione um cliente.")
 
-    # Pré-carregar dicionário de clientes para evitar N+1 queries
-    todos_cli = db.query(Cliente).all()
-    clientes_map = {c.id: c for c in todos_cli}
-
     # ==========================================
     # ABA 2: PÁTIO (EM ANDAMENTO)
     # ==========================================
     elif aba_selecionada == lbl_patio:
         st.markdown(f"<div style='margin-top:10px; margin-bottom:12px;'><span style='font-size:16px; font-weight:500;'>Em Andamento</span> <span class='red-badge'>{qtd_andamento}</span></div>", unsafe_allow_html=True)
         if em_andamento:
-            now = datetime.now()
+            now = obter_hora_local()
             for at in em_andamento:
                 cli = clientes_map.get(at.cliente_id)
                 cli_nome = cli.nome if cli else "Desconhecido"
@@ -531,10 +531,7 @@ def render_fast_launch():
                     )
                     
                     if op_os == "Concluir":
-                        at.status = "Finalizado"
-                        at.data_conclusao = obter_hora_local().isoformat()
-                        db.commit()
-                        st.rerun()
+                        dialog_checkout(at.id)
                     elif op_os == "Editar":
                         dialog_editar_os(at.id)
                     elif op_os == "Excluir":
@@ -554,12 +551,22 @@ def render_fast_launch():
         if concluidos:
             for at in concluidos:
                 cli = clientes_map.get(at.cliente_id)
+                dt_c = datetime.fromisoformat(at.data_conclusao) if at.data_conclusao else None
+                dt_str = dt_c.strftime('%d/%m/%Y às %H:%M') if dt_c else '-'
                 with st.container(border=True):
-                    st.markdown(f"<p style='margin:0; font-size:14px; font-weight:600;'>{cli.nome if cli else 'Desconhecido'} <span style='font-size:10px; font-weight:normal; color:var(--text-sec);'>({at.codigo})</span></p>", unsafe_allow_html=True)
-                    st.markdown(f"<p style='margin:2px 0; font-size:12px;'>{gold_icon('check')} Finalizado: {datetime.fromisoformat(at.data_conclusao).strftime('%H:%M') if at.data_conclusao else '-'}</p>", unsafe_allow_html=True)
-                    st.markdown(f"<p style='margin:0; font-size:12px;'>{at.forma_pagamento} &nbsp;|&nbsp; <b>R$ {at.valor_total:.2f}</b></p>", unsafe_allow_html=True)
-                    # Use margin top for the button visually by separating it.
-                    st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div style='display: flex; justify-content: space-between; align-items: center; margin: -5px 0;'>
+                        <div>
+                            <span style='font-size:13px; font-weight:600;'>{cli.nome if cli else 'Desconhecido'}</span> 
+                            <span style='font-size:11px; color:#888;'>({at.codigo})</span><br>
+                            <span style='font-size:11px; color:#555;'>{gold_icon('check')} {dt_str} | {at.forma_pagamento}</span>
+                        </div>
+                        <div style='text-align: right;'>
+                            <span style='font-size:13px; font-weight:700; color:var(--text-main);'>R$ {at.valor_total:.2f}</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
                     if st.button("Excluir", key=f"hist_del_{at.id}"):
                         dialog_excluir_os(at.id)
         else:
