@@ -76,9 +76,17 @@ def dialog_novo_cliente():
     nova_placa = st.text_input("Placa do Veículo")
     novo_modelo = st.text_input("Modelo do Veículo")
     
+
     if st.button("Salvar Cliente", type="primary", use_container_width=True):
         if novo_nome:
             tel_formatado = formatar_telefone(novo_tel_num)
+            
+            if nova_placa and tel_formatado:
+                existe = db.query(Cliente).filter(Cliente.placa_veiculo == nova_placa, Cliente.telefone == tel_formatado).first()
+                if existe:
+                    st.toast("Erro: Cliente já existe com esta placa e telefone!", icon='🚫')
+                    return
+            
             novo_cliente = Cliente(
                 codigo=codigo_seq, 
                 nome=novo_nome, 
@@ -88,7 +96,8 @@ def dialog_novo_cliente():
             )
             db.add(novo_cliente)
             db.commit()
-            st.success(f"Cliente cadastrado com sucesso!")
+            st.session_state["success_msg"] = "Cliente cadastrado com sucesso!"
+            st.session_state["novo_cliente_codigo"] = codigo_seq
             st.rerun()
 
 @dialog_decorator("Confirmar Exclusão")
@@ -334,10 +343,8 @@ def render_fast_launch():
         st.session_state['success_msg'] = None
         
     if st.session_state['success_msg']:
-        st.success(st.session_state['success_msg'])
-        if st.button("OK", use_container_width=True):
-            st.session_state['success_msg'] = None
-            st.rerun()
+        st.toast(st.session_state['success_msg'], icon='✅')
+        st.session_state['success_msg'] = None
 
     db = next(get_db())
     hoje = datetime.now()
@@ -486,6 +493,13 @@ def render_fast_launch():
                 cliente_opcoes.append(f"{c.codigo} | {c.nome or 'Desconhecido'} ({c.placa_veiculo or 'Sem Placa'})")
             
             index_sel = 1 if len(cliente_opcoes) == 2 else 0
+            if 'novo_cliente_codigo' in st.session_state:
+                for idx, op in enumerate(cliente_opcoes):
+                    if op.startswith(st.session_state['novo_cliente_codigo']):
+                        index_sel = idx
+                        break
+                # Only use once
+                del st.session_state['novo_cliente_codigo']
             cliente_selecionado = st.selectbox("Cliente", cliente_opcoes, index=index_sel, label_visibility="collapsed")
             
             st.markdown("<hr style='margin:12px 0;'>", unsafe_allow_html=True)
@@ -612,6 +626,7 @@ def render_fast_launch():
                         <div>
                             <span style='font-size:13px; font-weight:600;'>{cli.nome if cli else 'Desconhecido'}</span> 
                             <span style='font-size:11px; color:#888;'>({at.codigo})</span><br>
+                            <span style='font-size:11px; color:#888;'>*{cli.modelo_veiculo if cli and cli.modelo_veiculo else "Sem Veículo"}*</span><br>
                             <span style='font-size:11px; color:#555;'>{gold_icon('check')} {dt_str} | {at.forma_pagamento}</span>
                         </div>
                         <div style='text-align: right;'>
