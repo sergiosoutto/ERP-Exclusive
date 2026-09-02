@@ -328,13 +328,14 @@ def render_cadastros():
     
     db = next(get_db())
     
-    t_cat, t_banco, t_servico, t_pag, t_usr, t_meta = st.tabs([
+    t_cat, t_banco, t_servico, t_pag, t_usr, t_meta, t_log = st.tabs([
         "Categorias", 
         "Bancos",
         "Serviços",
         "Formas de Pgto",
         "Usuários",
-        "Metas"
+        "Metas",
+        "Histórico / Logs"
     ])
     
     # --- TAB 1: CATEGORIAS ---
