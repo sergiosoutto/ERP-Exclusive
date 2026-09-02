@@ -228,16 +228,35 @@ def main():
         st.markdown(f"<p style='text-align: center; font-size: 11px; margin-top:-10px; color: rgba(255,255,255,0.7);'>Acesso: <span style='color: white; font-weight: 800;'>{st.session_state['user_role'].upper()}</span></p>", unsafe_allow_html=True)
         st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
         
-        menu_options = [
-            "Fluxo do dia", 
-            "Transações", 
-            "Gestão Financeira", 
+        all_menu_options = [
+            "Fluxo do Dia",
+            "Transações",
+            "Gestão Financeira",
             "Estoque & Insumos",
             "Gestão de Pessoal",
             "CRM & Fidelidade",
             "Cadastros",
             "Central Analítica"
         ]
+        
+        # Filtrar menus baseados nas permissões
+        user_perms = st.session_state.get('permissoes', 'todas')
+        if user_perms == "todas" or st.session_state.get('user_role') == 'admin':
+            menu_options = all_menu_options
+        else:
+            perms_list = user_perms.split(",")
+            map_perms = {
+                "Fluxo do Dia": ["Fluxo do Dia", "Transações"],
+                "Financeiro": ["Gestão Financeira"],
+                "Estoque": ["Estoque & Insumos"],
+                "Gestão de Pessoal": ["Gestão de Pessoal"],
+                "CRM": ["CRM & Fidelidade"],
+                "Cadastros": ["Cadastros", "Central Analítica"]
+            }
+            menu_options = []
+            for k, v_list in map_perms.items():
+                if k in perms_list:
+                    menu_options.extend(v_list)
         
         # Icons matching the final menu_options list
         all_icons = {
@@ -281,7 +300,7 @@ def main():
             st.rerun()
 
     # Injeta CSS dinâmico para centralizar apenas se for Fluxo do Dia
-    if selected == "Fluxo do dia":
+    if selected == "Fluxo do Dia":
         st.markdown("""
         <style>
             .block-container {
@@ -296,7 +315,7 @@ def main():
     # ==========================================
     # 5. Roteamento de Módulos (Views)
     # ==========================================
-    if selected == "Fluxo do dia":
+    if selected == "Fluxo do Dia":
         from modules.fast_launch import render_fast_launch
         render_fast_launch()
 
