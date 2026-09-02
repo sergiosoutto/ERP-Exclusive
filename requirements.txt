@@ -7,3 +7,4 @@ python-dotenv==1.0.1
 openpyxl>=3.1.2
 fpdf2>=2.7.5
 psycopg2-binary>=2.9.9
+extra-streamlit-components==0.1.81

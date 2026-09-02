@@ -53,6 +53,8 @@ class Usuario(Base):
     role = Column(String, default="admin") # admin, basico
     permissoes = Column(String, default="todas")
     pode_excluir = Column(Boolean, default=False)
+    tentativas_falhas = Column(Integer, default=0)
+    bloqueado_ate = Column(String)
 
 class FormaPagamento(Base):
     __tablename__ = "formas_pagamento"
@@ -425,6 +427,14 @@ def init_db():
     # Migrations for existing DB
     try:
         db.execute(text("ALTER TABLE usuarios ADD COLUMN pode_excluir BOOLEAN DEFAULT FALSE;"))
+    except:
+        db.rollback()
+    try:
+        db.execute(text("ALTER TABLE usuarios ADD COLUMN tentativas_falhas INTEGER DEFAULT 0;"))
+    except:
+        db.rollback()
+    try:
+        db.execute(text("ALTER TABLE usuarios ADD COLUMN bloqueado_ate VARCHAR;"))
         db.commit()
     except:
         db.rollback()
