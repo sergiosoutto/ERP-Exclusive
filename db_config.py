@@ -421,6 +421,13 @@ def init_db():
     except Exception:
         db.rollback()
 
+    # Migrations for existing DB
+    try:
+        db.execute(text("ALTER TABLE usuarios ADD COLUMN pode_excluir BOOLEAN DEFAULT FALSE;"))
+        db.commit()
+    except Exception:
+        db.rollback()
+
     db.close()
     seed_db()
 
@@ -428,12 +435,7 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 
-    # Migrations
-    try:
-        db.execute(text("ALTER TABLE usuarios ADD COLUMN pode_excluir BOOLEAN DEFAULT FALSE;"))
-        db.commit()
-    except Exception:
-        db.rollback()
+
 
 def seed_db():
     db = SessionLocal()
