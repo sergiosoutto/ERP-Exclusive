@@ -136,6 +136,7 @@ def dialog_reagendar(at_id):
         st.session_state['success_msg'] = "OS reagendada com sucesso!"
         st.rerun()
 
+@dialog_decorator("Editar OS")
 def dialog_editar_os(at_id):
     db = next(get_db())
     at = db.query(Atendimento).filter(Atendimento.id == at_id).first()
@@ -356,6 +357,8 @@ def render_fast_launch():
     hoje_str_patio = hoje.strftime("%Y-%m-%d")
     em_andamento = db.query(Atendimento).filter(Atendimento.status == "Em Andamento").order_by(Atendimento.id.asc()).all()
     qtd_andamento = len(em_andamento)
+    valor_patio = sum(a.valor_total for a in em_andamento) if em_andamento else 0.0
+
     
     concluidos_hoje = db.query(Atendimento).filter(Atendimento.status == "Finalizado", Atendimento.data_criacao.like(f"{hoje_str_patio}%")).all()
     qtd_concluido = len(concluidos_hoje)
@@ -430,6 +433,8 @@ def render_fast_launch():
             cor_dia = "#2ecc71"
         else:
             txt_dia = f"Falta: R$ {formatar_moeda(abs(diff_dia))}"
+            if valor_patio > 0:
+                txt_dia += f" <span style='font-size:10px; color:#555;'> (+ R$ {formatar_moeda(valor_patio)} no pátio)</span>"
             cor_dia = "#e74c3c"
             
         if diff_semana >= 0:
@@ -437,6 +442,8 @@ def render_fast_launch():
             cor_sem = "#2ecc71"
         else:
             txt_sem = f"Falta: R$ {formatar_moeda(abs(diff_semana))}"
+            if valor_patio > 0:
+                txt_sem += f" <span style='font-size:10px; color:#555;'> (+ R$ {formatar_moeda(valor_patio)} no pátio)</span>"
             cor_sem = "#e74c3c"
         
         # MINI BOX FLUXO GERAL
