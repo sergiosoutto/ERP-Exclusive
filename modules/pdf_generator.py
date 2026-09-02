@@ -1,3 +1,10 @@
+
+def formatar_moeda(valor):
+    try:
+        return f"{valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except:
+        return '0,00'
+
 import os
 from fpdf import FPDF
 from datetime import datetime
@@ -46,8 +53,8 @@ def gerar_recibo_pdf(recibo, colaborador):
     
     def linha_valor(desc, prov=0.0, desc_val=0.0):
         pdf.cell(42, 6, desc, border=1)
-        prov_str = f"{prov:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if prov > 0 else "-"
-        desc_str = f"{desc_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if desc_val > 0 else "-"
+        prov_str = f"{formatar_moeda(prov)}".replace(",", "X").replace(".", ",").replace("X", ".") if prov > 0 else "-"
+        desc_str = f"{formatar_moeda(desc_val)}".replace(",", "X").replace(".", ",").replace("X", ".") if desc_val > 0 else "-"
         pdf.cell(23, 6, prov_str, border=1, align='R')
         pdf.cell(23, 6, desc_str, border=1, align='R')
         pdf.ln(6)
@@ -73,8 +80,8 @@ def gerar_recibo_pdf(recibo, colaborador):
     
     pdf.set_font('helvetica', 'B', 9)
     pdf.cell(42, 7, 'TOTAIS', border=1, fill=True)
-    prov_total_str = f"R$ {total_prov:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    desc_total_str = f"R$ {total_desc:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    prov_total_str = f"R$ {formatar_moeda(total_prov)}".replace(",", "X").replace(".", ",").replace("X", ".")
+    desc_total_str = f"R$ {formatar_moeda(total_desc)}".replace(",", "X").replace(".", ",").replace("X", ".")
     pdf.cell(23, 7, prov_total_str, border=1, align='R', fill=True)
     pdf.cell(23, 7, desc_total_str, border=1, align='R', fill=True)
     pdf.ln(10)
@@ -82,7 +89,7 @@ def gerar_recibo_pdf(recibo, colaborador):
     # Líquido
     pdf.set_font('helvetica', 'B', 12)
     pdf.set_fill_color(220, 240, 220)
-    liq_str = f"R$ {recibo.valor_liquido:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    liq_str = f"R$ {formatar_moeda(recibo.valor_liquido)}".replace(",", "X").replace(".", ",").replace("X", ".")
     pdf.cell(0, 10, f"LÍQUIDO A RECEBER: {liq_str}", border=1, align='C', fill=True)
     
     pdf.ln(15)

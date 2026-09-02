@@ -21,6 +21,13 @@ def formatar_telefone(tel_str):
     elif len(digitos) == 10: return f"({digitos[:2]}) {digitos[2:6]}-{digitos[6:]}"
     return tel_str
 
+
+def formatar_moeda(valor):
+    try:
+        return f"{valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except:
+        return '0,00'
+
 def formatar_tempo(delta):
     horas, resto = divmod(delta.seconds, 3600)
     minutos, _ = divmod(resto, 60)
@@ -389,17 +396,17 @@ def render_fast_launch():
         diff_semana = fat_semana - meta_semanal
         
         if diff_dia >= 0:
-            txt_dia = f"Excedente: R$ {diff_dia:,.2f}"
+            txt_dia = f"Excedente: R$ {formatar_moeda(diff_dia)}"
             cor_dia = "#2ecc71"
         else:
-            txt_dia = f"Falta: R$ {abs(diff_dia):,.2f}"
+            txt_dia = f"Falta: R$ {formatar_moeda(abs(diff_dia))}"
             cor_dia = "#e74c3c"
             
         if diff_semana >= 0:
-            txt_sem = f"Excedente: R$ {diff_semana:,.2f}"
+            txt_sem = f"Excedente: R$ {formatar_moeda(diff_semana)}"
             cor_sem = "#2ecc71"
         else:
-            txt_sem = f"Falta: R$ {abs(diff_semana):,.2f}"
+            txt_sem = f"Falta: R$ {formatar_moeda(abs(diff_semana))}"
             cor_sem = "#e74c3c"
         
         # MINI BOX FLUXO GERAL
@@ -407,13 +414,13 @@ def render_fast_launch():
         <div style='background:#fcfcfc; border:1px solid #eee; border-radius:8px; padding:12px; margin-bottom:15px; display:flex; justify-content:space-around; align-items:center; box-shadow:0 2px 4px rgba(0,0,0,0.02);'>
             <div style='text-align:center;'>
                 <div style='font-size:10px; font-weight:700; color:#888; text-transform:uppercase;'>Alvo do Dia</div>
-                <div style='font-size:16px; font-weight:800; color:#333;'>R$ {meta_diaria:,.2f}</div>
+                <div style='font-size:16px; font-weight:800; color:#333;'>R$ {formatar_moeda(meta_diaria)}</div>
                 <div style='font-size:11px; font-weight:600; color:{cor_dia};'>{txt_dia}</div>
             </div>
             <div style='width:1px; height:40px; background:#e0e0e0;'></div>
             <div style='text-align:center;'>
                 <div style='font-size:10px; font-weight:700; color:#888; text-transform:uppercase;'>Meta da Semana</div>
-                <div style='font-size:16px; font-weight:800; color:#333;'>R$ {meta_semanal:,.2f}</div>
+                <div style='font-size:16px; font-weight:800; color:#333;'>R$ {formatar_moeda(meta_semanal)}</div>
                 <div style='font-size:11px; font-weight:600; color:{cor_sem};'>{txt_sem}</div>
             </div>
         </div>
@@ -526,7 +533,7 @@ def render_fast_launch():
                     # Ações da OS usando a Lógica Exata do seu outro app (Pills)
                     op_os = st.pills(
                         "Ações OS",
-                        options=["Concluir", "Editar", "Excluir"],
+                        options=["Concluir", "Editar", "Excluir"] if st.session_state.get("pode_excluir", False) else ["Concluir", "Editar"],
                         key=f"pill_os_{at.id}",
                         label_visibility="collapsed"
                     )
@@ -566,7 +573,7 @@ def render_fast_launch():
                     </div>
                     """, unsafe_allow_html=True)
                     st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
-                    if st.button("Excluir", key=f"hist_del_{at.id}"):
+                    if st.session_state.get("pode_excluir", False) and st.button("Excluir", key=f"hist_del_{at.id}"):
                         dialog_excluir_os(at.id)
         else:
             st.info("Nenhum concluído hoje.")
@@ -584,7 +591,7 @@ def render_fast_launch():
         # --- DASHBOARD DE METAS ---
         if meta_atual:
             cor_diff = "#2ecc71" if diff >= 0 else "#e74c3c"
-            msg_diff = f"Parabéns! Projetando superar a meta semanal em R$ {diff:,.2f}" if diff >= 0 else f"Atenção! Projetando um déficit de R$ {abs(diff):,.2f} na meta semanal"
+            msg_diff = f"Parabéns! Projetando superar a meta semanal em R$ {formatar_moeda(diff)}" if diff >= 0 else f"Atenção! Projetando um déficit de R$ {formatar_moeda(abs(diff))} na meta semanal"
             dias_trabalhados_semana = hoje.weekday() + 1
             media_dia = fat_semana / dias_trabalhados_semana if dias_trabalhados_semana > 0 else 0
             
@@ -592,12 +599,12 @@ def render_fast_launch():
             <div style='display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;'>
                 <div class='premium-card' style='padding:12px!important; text-align:center;'>
                     <div style='font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase;'>Meta Total ({meta_atual.descricao})</div>
-                    <div style='font-size:16px; font-weight:800; color:var(--text-main); margin-top:2px;'>R$ {fat_mes:,.2f} / R$ {meta_atual.valor:,.2f}</div>
+                    <div style='font-size:16px; font-weight:800; color:var(--text-main); margin-top:2px;'>R$ {formatar_moeda(fat_mes)} / R$ {formatar_moeda(meta_atual.valor)}</div>
                     <div style='font-size:11px; font-weight:700; color:var(--accent); margin-top:2px;'>{perc_total:.1f}% Concluído</div>
                 </div>
                 <div class='premium-card' style='padding:12px!important; text-align:center;'>
                     <div style='font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase;'>Meta da Semana</div>
-                    <div style='font-size:16px; font-weight:800; color:var(--text-main); margin-top:2px;'>R$ {fat_semana:,.2f} / R$ {meta_semanal:,.2f}</div>
+                    <div style='font-size:16px; font-weight:800; color:var(--text-main); margin-top:2px;'>R$ {formatar_moeda(fat_semana)} / R$ {formatar_moeda(meta_semanal)}</div>
                     <div style='font-size:11px; font-weight:700; color:var(--accent); margin-top:2px;'>{perc_semana:.1f}% Concluído</div>
                 </div>
             </div>
@@ -606,11 +613,11 @@ def render_fast_launch():
                 <div style='font-size:12px; font-weight:700; color:#555; margin-bottom:8px;'>{gold_icon('graph-up')} Projeção de Fechamento da Semana (Run Rate)</div>
                 <div style='background:#f4f6f8; border-radius:6px; padding:10px; display:flex; justify-content:space-between; margin-bottom:10px;'>
                     <div style='text-align:left;'><div style='font-size:9px; font-weight:700; color:#888; text-transform:uppercase;'>Status Atual</div><div style='font-size:12px; font-weight:800; color:{cor_diff};'>{msg_diff}</div></div>
-                    <div style='text-align:right;'><div style='font-size:9px; font-weight:700; color:#888; text-transform:uppercase;'>Média / Dia (Semana)</div><div style='font-size:14px; font-weight:800; color:#444;'>R$ {media_dia:,.2f}</div></div>
+                    <div style='text-align:right;'><div style='font-size:9px; font-weight:700; color:#888; text-transform:uppercase;'>Média / Dia (Semana)</div><div style='font-size:14px; font-weight:800; color:#444;'>R$ {formatar_moeda(media_dia)}</div></div>
                 </div>
                 <div style='display:flex; justify-content:space-between; align-items:center;'>
                     <div style='font-size:12px; color:#888;'>Faturamento projetado (Fim da Semana):</div>
-                    <div style='font-size:16px; font-weight:800; color:{cor_diff};'>R$ {run_rate:,.2f}</div>
+                    <div style='font-size:16px; font-weight:800; color:{cor_diff};'>R$ {formatar_moeda(run_rate)}</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -629,7 +636,7 @@ def render_fast_launch():
             pgtos[fp] = pgtos.get(fp, 0) + a.valor_total
             
         pgtos_sorted = sorted(pgtos.items(), key=lambda x: x[1], reverse=True)[:3]
-        pgto_html = "".join([f"<div style='display:flex; justify-content:space-between; font-size:11px; margin-top:3px; color:var(--text-sec); border-bottom: 1px dashed rgba(0,0,0,0.05); padding-bottom: 2px;'><span>{k}</span> <b>R$ {v:,.2f}</b></div>" for k, v in pgtos_sorted])
+        pgto_html = "".join([f"<div style='display:flex; justify-content:space-between; font-size:11px; margin-top:3px; color:var(--text-sec); border-bottom: 1px dashed rgba(0,0,0,0.05); padding-bottom: 2px;'><span>{k}</span> <b>R$ {formatar_moeda(v)}</b></div>" for k, v in pgtos_sorted])
         if not pgto_html: pgto_html = "<div style='font-size:11px; color:#999; text-align:center;'>Sem pagamentos hoje</div>"
         
         # Processar Tempos e Serviços
@@ -703,14 +710,14 @@ def render_fast_launch():
         <div style='display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:15px;'>
             <div class='premium-card' style='padding:12px!important;'>
                 <div style='font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; text-align:center;'>Faturamento Total</div>
-                <div style='font-size:18px; font-weight:800; color:var(--success); text-align:center; margin-bottom:8px;'>R$ {faturamento:,.2f}</div>
+                <div style='font-size:18px; font-weight:800; color:var(--success); text-align:center; margin-bottom:8px;'>R$ {formatar_moeda(faturamento)}</div>
                 <div style='border-top:1px solid #eee; padding-top:6px;'>
                     {pgto_html}
                 </div>
             </div>
             <div class='premium-card' style='padding:12px!important; text-align:center; display:flex; flex-direction:column; justify-content:center;'>
                 <div style='font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase;'>Ticket Médio (TKM)</div>
-                <div style='font-size:20px; font-weight:800; color:var(--accent); margin-top:4px;'>R$ {tkm:,.2f}</div>
+                <div style='font-size:20px; font-weight:800; color:var(--accent); margin-top:4px;'>R$ {formatar_moeda(tkm)}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -764,10 +771,10 @@ def render_fast_launch():
             
             if meta_atual:
                 if diff < 0:
-                    percep += f" Atenção: O ritmo atual projeta fechar R$ {abs(diff):,.2f} abaixo da meta ({meta_atual.descricao})."
+                    percep += f" Atenção: O ritmo atual projeta fechar R$ {formatar_moeda(abs(diff))} abaixo da meta ({meta_atual.descricao})."
                     melhoria = "Focar em upsell para recuperar o déficit."
                 else:
-                    percep += f" Ótimo: O ritmo está superando a meta em R$ {diff:,.2f} projetados."
+                    percep += f" Ótimo: O ritmo está superando a meta em R$ {formatar_moeda(diff)} projetados."
                     melhoria = "Manter a excelente constância."
             
             if tempo_medio_global > 90:

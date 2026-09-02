@@ -1,3 +1,10 @@
+
+def formatar_moeda(valor):
+    try:
+        return f"{valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except:
+        return '0,00'
+
 import streamlit as st
 from db_config import get_db, Produto
 from modules.fast_launch import gold_icon, dialog_decorator
@@ -37,7 +44,7 @@ def render_inventory():
                 with p1: st.write(f"**Custo Unitário:** R$ {p.custo_unidade:,.4f}")
                 with p2: st.write(f"**Estoque:** {p.quantidade_estoque} {p.unidade_medida}")
                 with p4:
-                    if st.button("Excluir", key=f"del_prod_{p.id}", type="primary"):
+                    if st.session_state.get("pode_excluir", False) and st.button("Excluir", key=f"del_prod_{p.id}", type="primary"):
                         from db_config import ServicoInsumo
                         db.query(ServicoInsumo).filter(ServicoInsumo.produto_id == p.id).delete()
                         db.delete(p)

@@ -1,3 +1,10 @@
+
+def formatar_moeda(valor):
+    try:
+        return f"{valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except:
+        return '0,00'
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -209,7 +216,7 @@ def dialog_pendentes():
             with col1:
                 st.markdown(f"<p style='margin:0; font-weight:bold; font-size:15px; color:#1D1D1F;'>{p.descricao}</p>", unsafe_allow_html=True)
                 cor = "#34C759" if p.tipo == "Receita" else "#FF3B30"
-                st.markdown(f"<p style='margin:0; font-size:14px; font-weight:600; color:{cor};'>R$ {p.valor_previsto:,.2f} <span style='font-size:11px; font-weight:400; color:#86868B;'>({p.tipo})</span></p>", unsafe_allow_html=True)
+                st.markdown(f"<p style='margin:0; font-size:14px; font-weight:600; color:{cor};'>R$ {formatar_moeda(p.valor_previsto)} <span style='font-size:11px; font-weight:400; color:#86868B;'>({p.tipo})</span></p>", unsafe_allow_html=True)
                 st.markdown(f"<p style='margin-top:5px; font-size:12px; color:#86868B;'>Vencimento: <b>{p.data_vencimento}</b></p>", unsafe_allow_html=True)
                 
             with col2:
@@ -391,8 +398,8 @@ def render_financial():
             {gold_icon('check')} SALDO PREVISTO (CONSIDERANDO PENDÊNCIAS DO MÊS)
         </p>
         <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-            <p style="font-size: 13px; color: var(--text-sec); margin: 0;">Fórmula: Saldo Atual (R$ {saldo_contas:,.2f}) + Receitas (R$ {receitas_pendentes:,.2f}) - Despesas (R$ {despesas_pendentes:,.2f})</p>
-            <h2 style="margin: 0; color: {cor_saldo_final}; font-size: 32px; letter-spacing: -0.03em;">R$ {saldo_previsto_final:,.2f}</h2>
+            <p style="font-size: 13px; color: var(--text-sec); margin: 0;">Fórmula: Saldo Atual (R$ {formatar_moeda(saldo_contas)}) + Receitas (R$ {formatar_moeda(receitas_pendentes)}) - Despesas (R$ {formatar_moeda(despesas_pendentes)})</p>
+            <h2 style="margin: 0; color: {cor_saldo_final}; font-size: 32px; letter-spacing: -0.03em;">R$ {formatar_moeda(saldo_previsto_final)}</h2>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -404,7 +411,7 @@ def render_financial():
         st.markdown(f"""
         <div class="kpi-card" style="background-color: var(--card-bg); border-color: var(--accent);">
             <div class="kpi-title" style="color: var(--text-main);">{gold_icon('credit-card')} SALDO ATUAL (Bancos)</div>
-            <div class="kpi-value" style="color: {cor_saldo_atual}; font-size: 32px;">R$ {saldo_contas:,.2f}</div>
+            <div class="kpi-value" style="color: {cor_saldo_atual}; font-size: 32px;">R$ {formatar_moeda(saldo_contas)}</div>
         </div>
         """, unsafe_allow_html=True)
     with kpi2:
@@ -414,11 +421,11 @@ def render_financial():
             <div class="kpi-row" style="border-top:none; padding-top:0; margin-top:0;">
                 <div>
                     <div class="kpi-subtext">Previsto</div>
-                    <div class="kpi-subval">R$ {receita_prevista:,.2f}</div>
+                    <div class="kpi-subval">R$ {formatar_moeda(receita_prevista)}</div>
                 </div>
                 <div style="text-align:right;">
                     <div class="kpi-subtext">Real</div>
-                    <div class="kpi-subval" style="color: var(--success);">R$ {receita_real:,.2f}</div>
+                    <div class="kpi-subval" style="color: var(--success);">R$ {formatar_moeda(receita_real)}</div>
                 </div>
             </div>
         </div>
@@ -430,11 +437,11 @@ def render_financial():
             <div class="kpi-row" style="border-top:none; padding-top:0; margin-top:0;">
                 <div>
                     <div class="kpi-subtext">Previsto</div>
-                    <div class="kpi-subval">R$ {despesa_prevista:,.2f}</div>
+                    <div class="kpi-subval">R$ {formatar_moeda(despesa_prevista)}</div>
                 </div>
                 <div style="text-align:right;">
                     <div class="kpi-subtext">Real</div>
-                    <div class="kpi-subval" style="color: var(--danger);">R$ {despesa_real:,.2f}</div>
+                    <div class="kpi-subval" style="color: var(--danger);">R$ {formatar_moeda(despesa_real)}</div>
                 </div>
             </div>
         </div>
@@ -446,8 +453,8 @@ def render_financial():
             <div class="kpi-title" style="color: var(--warning);">{gold_icon('hourglass-split')} PENDENTES</div>
             <div class="kpi-value" style="font-size: 24px;">{pendentes_qtd} lanç.</div>
             <div class="kpi-row" style="margin-top: 4px;">
-                <div class="kpi-subval" style="color:var(--success);">+ R$ {receitas_pendentes:,.2f}</div>
-                <div class="kpi-subval" style="color:var(--danger);">- R$ {despesas_pendentes:,.2f}</div>
+                <div class="kpi-subval" style="color:var(--success);">+ R$ {formatar_moeda(receitas_pendentes)}</div>
+                <div class="kpi-subval" style="color:var(--danger);">- R$ {formatar_moeda(despesas_pendentes)}</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -462,7 +469,7 @@ def render_financial():
             "Descrição": l.descricao,
             "Categoria": db.query(CategoriaFinanceira).filter(CategoriaFinanceira.id == l.categoria_id).first().nome if l.categoria_id else "",
             "Tipo": l.tipo,
-            "Valor": f"R$ {l.valor:,.2f}",
+            "Valor": f"R$ {formatar_moeda(l.valor)}",
             "Status": l.status
         } for l in lancamentos])
         st.dataframe(df, use_container_width=True, hide_index=True)

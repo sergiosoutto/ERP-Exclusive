@@ -52,6 +52,7 @@ class Usuario(Base):
     password_hash = Column(String)
     role = Column(String, default="admin") # admin, basico
     permissoes = Column(String, default="todas")
+    pode_excluir = Column(Boolean, default=False)
 
 class FormaPagamento(Base):
     __tablename__ = "formas_pagamento"
@@ -194,6 +195,15 @@ class EsquemaSalarial(Base):
     diaria_transporte = Column(Float, default=0.0)
     perc_comissao = Column(Float, default=0.0)
     gatilho_meta = Column(Float, default=0.0)
+
+
+class LogAuditoria(Base):
+    __tablename__ = "log_auditoria"
+    id = Column(Integer, primary_key=True, index=True)
+    data_hora = Column(String)
+    usuario = Column(String)
+    acao = Column(String)
+    detalhes = Column(String)
 
 class Adiantamento(Base):
     __tablename__ = "adiantamentos"
@@ -417,6 +427,14 @@ def init_db():
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
+
+    # Migrations
+    try:
+        db.execute(text("ALTER TABLE usuarios ADD COLUMN pode_excluir BOOLEAN DEFAULT FALSE;"))
+        db.commit()
+    except Exception:
+        db.rollback()
+
 def seed_db():
     db = SessionLocal()
     
@@ -487,5 +505,27 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    finally:
+        db.close()
+
+
+def registrar_log(acao, detalhes=""):
+    import streamlit as st
+    from datetime import datetime, timedelta, timezone
+    
+    usuario = "Sistema"
+    if 'username' in st.session_state:
+        usuario = st.session_state['username']
+        
+    fuso_brasil = timezone(timedelta(hours=-3))
+    agora = datetime.now(fuso_brasil).replace(tzinfo=None).isoformat()
+    
+    db = SessionLocal()
+    try:
+        log = LogAuditoria(data_hora=agora, usuario=usuario, acao=acao, detalhes=detalhes)
+        db.add(log)
+        db.commit()
+    except Exception as e:
+        print("Erro ao registrar log:", e)
     finally:
         db.close()

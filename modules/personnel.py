@@ -1,3 +1,10 @@
+
+def formatar_moeda(valor):
+    try:
+        return f"{valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except:
+        return '0,00'
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date
@@ -146,7 +153,7 @@ def render_personnel():
                     dt_v = v.data.strftime('%d/%m/%Y') if v.data else "N/I"
                     with x1: st.write(f"**{dt_v}**")
                     with x2: st.write(f"**{nome_cv}**")
-                    with x3: st.write(f"{v.descricao} (R$ {v.valor:,.2f})")
+                    with x3: st.write(f"{v.descricao} (R$ {formatar_moeda(v.valor)})")
                     with x4:
                         if st.button("Excluir", key=f"del_vale_{v.id}"):
                             db.delete(v)
@@ -222,7 +229,7 @@ def render_personnel():
                     total_d = f_vales + f_outros_desc
                     liq = total_p - total_d
                     
-                    st.markdown(f"<h3 style='text-align:right; color: {'red' if liq < 0 else 'green'};'>Líquido a Receber: R$ {liq:,.2f}</h3>", unsafe_allow_html=True)
+                    st.markdown(f"<h3 style='text-align:right; color: {'red' if liq < 0 else 'green'};'>Líquido a Receber: R$ {formatar_moeda(liq)}</h3>", unsafe_allow_html=True)
                     
                     submit_fechamento = st.form_submit_button("Salvar Fechamento e Gerar Recibo", type="primary", use_container_width=True)
                     
@@ -272,7 +279,7 @@ def render_personnel():
                         dt_r = r.data_geracao.strftime('%d/%m/%Y') if r.data_geracao else "N/I"
                         st.write(f"**Data:** {dt_r}")
                     with h2: st.write(f"**{nome_c}**")
-                    with h3: st.write(f"**Líquido:** R$ {r.valor_liquido:,.2f}")
+                    with h3: st.write(f"**Líquido:** R$ {formatar_moeda(r.valor_liquido)}")
                     
                     with h4:
                         if st.button("📄 Gerar PDF", key=f"pdf_recibo_{r.id}", type="primary"):

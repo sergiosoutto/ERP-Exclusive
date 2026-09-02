@@ -1,4 +1,12 @@
+
+def formatar_moeda(valor):
+    try:
+        return f"{valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except:
+        return '0,00'
+
 import streamlit as st
+from datetime import datetime
 import pandas as pd
 from db_config import get_db, CategoriaFinanceira, SubcategoriaFinanceira, ContaBancaria, Colaborador, Produto, Servico, FormaPagamento, Usuario, ServicoInsumo, MetaApp
 from modules.fast_launch import gold_icon, dialog_decorator
@@ -168,19 +176,83 @@ def dialog_nova_forma_pagamento():
             db.commit()
             st.rerun()
 
+
+MENUS_DISPONIVEIS = ["Fluxo do Dia", "CRM", "Estoque", "Financeiro", "Gestão de Pessoal", "Cadastros"]
+
 @dialog_decorator("Novo Usuário")
 def dialog_novo_usuario():
     db = next(get_db())
     username = st.text_input("Username")
     password = st.text_input("Senha", type="password")
-    role = st.selectbox("Nível de Acesso", ["admin", "basico"])
+    
+    st.markdown("**Permissões de Menus:**")
+    permissoes_selecionadas = []
+    for menu in MENUS_DISPONIVEIS:
+        if st.checkbox(menu, value=True, key=f"novo_menu_{menu}"):
+            permissoes_selecionadas.append(menu)
+            
+    st.markdown("**Ações:**")
+    pode_excluir = st.checkbox("Pode excluir registros", value=False, key="novo_pode_excluir")
     
     if st.button("Criar Usuário", type="primary", use_container_width=True):
         if username and password:
-            usr = Usuario(username=username, password_hash=hashlib.sha256(password.encode()).hexdigest(), role=role)
+            perm_str = ",".join(permissoes_selecionadas)
+            usr = Usuario(
+                username=username, 
+                password_hash=hashlib.sha256(password.encode()).hexdigest(), 
+                role="basico", 
+                permissoes=perm_str,
+                pode_excluir=pode_excluir
+            )
             db.add(usr)
             db.commit()
+            from db_config import registrar_log
+            registrar_log(f"Criou o usuário '{username}'")
             st.rerun()
+
+@dialog_decorator("Editar Usuário")
+def dialog_editar_usuario(u_id):
+    db = next(get_db())
+    u = db.query(Usuario).filter(Usuario.id == u_id).first()
+    if not u: return
+    
+    st.write(f"Editando: **{u.username}**")
+    nova_senha = st.text_input("Nova Senha (deixe em branco para não alterar)", type="password")
+    
+    if u.username == 'admin':
+        st.info("O admin possui acesso total. Você só pode alterar a senha.")
+        if st.button("Salvar Admin", type="primary", use_container_width=True):
+            if nova_senha:
+                u.password_hash = hashlib.sha256(nova_senha.encode()).hexdigest()
+                db.commit()
+                from db_config import registrar_log
+                registrar_log(f"Alterou a senha do Admin")
+            st.rerun()
+        return
+        
+    perms_atuais = u.permissoes.split(",") if u.permissoes else []
+    if u.permissoes == "todas": perms_atuais = MENUS_DISPONIVEIS
+    
+    st.markdown("**Permissões de Menus:**")
+    permissoes_selecionadas = []
+    for menu in MENUS_DISPONIVEIS:
+        val_inicial = (menu in perms_atuais)
+        if st.checkbox(menu, value=val_inicial, key=f"edit_menu_{menu}_{u_id}"):
+            permissoes_selecionadas.append(menu)
+            
+    st.markdown("**Ações:**")
+    pode_excluir = st.checkbox("Pode excluir registros", value=u.pode_excluir, key=f"edit_pode_excluir_{u_id}")
+    
+    if st.button("Salvar Alterações", type="primary", use_container_width=True):
+        if nova_senha:
+            u.password_hash = hashlib.sha256(nova_senha.encode()).hexdigest()
+        u.permissoes = ",".join(permissoes_selecionadas)
+        u.pode_excluir = pode_excluir
+        db.commit()
+        from db_config import registrar_log
+        registrar_log(f"Editou permissões do usuário '{u.username}'")
+        st.rerun()
+
 
 
 # ==========================================
@@ -223,8 +295,8 @@ def dialog_novo_servico():
     lucro = preco_venda - custo_total
     margem = (lucro / preco_venda * 100) if preco_venda > 0 else 0.0
     
-    st.markdown(f"**Custo Total Estimado:** R$ {custo_total:,.2f}")
-    st.markdown(f"**Margem de Lucro Projetada:** {margem:.1f}% (R$ {lucro:,.2f})")
+    st.markdown(f"**Custo Total Estimado:** R$ {formatar_moeda(custo_total)}")
+    st.markdown(f"**Margem de Lucro Projetada:** {margem:.1f}% (R$ {formatar_moeda(lucro)})")
     
     if st.button("Salvar Serviço Completo", type="primary", use_container_width=True):
         if nome:
@@ -279,7 +351,7 @@ def render_cadastros():
         if categorias:
             for cat in categorias:
                 with st.expander(f"{cat.nome} ({cat.tipo})"):
-                    if st.button(f"Excluir {cat.nome}", key=f"excluir_cat_{cat.id}"):
+                    if st.session_state.get("pode_excluir", False) and st.button(f"Excluir {cat.nome}", key=f"excluir_cat_{cat.id}"):
                         db.delete(cat)
                         db.commit()
                         st.rerun()
@@ -290,7 +362,7 @@ def render_cadastros():
                             col_s1, col_s2 = st.columns([3, 1])
                             with col_s1: st.write(f"- {s.nome}")
                             with col_s2:
-                                if st.button("Excluir", key=f"excluir_sub_{s.id}"):
+                                if st.session_state.get("pode_excluir", False) and st.button("Excluir", key=f"excluir_sub_{s.id}"):
                                     db.delete(s)
                                     db.commit()
                                     st.rerun()
@@ -317,7 +389,7 @@ def render_cadastros():
                     f"<h4 style='margin:0;'>{c.nome}</h4>"
                     f"{gold_icon('bank')}"
                     f"</div>"
-                    f"<h3 style='color: {'var(--success)' if c.saldo_atual >= 0 else 'var(--danger)'}; margin-top: 5px; font-weight: 500;'>R$ {c.saldo_atual:,.2f}</h3>"
+                    f"<h3 style='color: {'var(--success)' if c.saldo_atual >= 0 else 'var(--danger)'}; margin-top: 5px; font-weight: 500;'>R$ {formatar_moeda(c.saldo_atual)}</h3>"
                     f"</div>"
                 )
                 st.markdown(html_card, unsafe_allow_html=True)
@@ -333,10 +405,10 @@ def render_cadastros():
         servicos = db.query(Servico).all()
         if servicos:
             for s in servicos:
-                with st.expander(f"{s.nome} - Venda: R$ {s.preco_padrao:,.2f} | Margem: {s.margem_lucro:.1f}%"):
+                with st.expander(f"{s.nome} - Venda: R$ {formatar_moeda(s.preco_padrao)} | Margem: {s.margem_lucro:.1f}%"):
                     s1, s2 = st.columns([3, 1])
                     with s1:
-                        st.write(f"**Custo Total (Fixos + Insumos):** R$ {s.custo_total:,.2f}")
+                        st.write(f"**Custo Total (Fixos + Insumos):** R$ {formatar_moeda(s.custo_total)}")
                         insumos = db.query(ServicoInsumo).filter(ServicoInsumo.servico_id == s.id).all()
                         if insumos:
                             st.write("**Insumos Consumidos por aplicação:**")
@@ -344,7 +416,7 @@ def render_cadastros():
                                 p = db.query(Produto).filter(Produto.id == ins.produto_id).first()
                                 st.write(f"- {p.nome}: {ins.quantidade_utilizada} {p.unidade_medida}")
                     with s2:
-                        if st.button("Excluir", key=f"del_serv_{s.id}", type="primary"):
+                        if st.session_state.get("pode_excluir", False) and st.button("Excluir", key=f"del_serv_{s.id}", type="primary"):
                             db.query(ServicoInsumo).filter(ServicoInsumo.servico_id == s.id).delete()
                             db.delete(s)
                             db.commit()
@@ -366,7 +438,7 @@ def render_cadastros():
                     with c1: st.write(f"**Tx à Vista:** {f.taxa_juros_vista}%")
                     with c2: st.write(f"**Tx Parcelado:** {f.taxa_juros_parcela}%")
                     with c3:
-                        if st.button("Excluir", key=f"del_fp_{f.id}", type="primary"):
+                        if st.session_state.get("pode_excluir", False) and st.button("Excluir", key=f"del_fp_{f.id}", type="primary"):
                             db.delete(f)
                             db.commit()
                             st.rerun()
@@ -383,13 +455,60 @@ def render_cadastros():
         if usrs:
             for u in usrs:
                 with st.expander(f"@{u.username} ({u.role})"):
-                    if u.username == 'admin':
-                        st.info("O usuário admin padrão não pode ser excluído.")
-                    else:
-                        if st.button("Excluir", key=f"del_usr_{u.id}", type="primary"):
-                            db.delete(u)
-                            db.commit()
-                            st.rerun()
+                    perms = "Todas" if u.permissoes == "todas" or u.role == "admin" else u.permissoes
+                    st.write(f"**Permissões:** {perms}")
+                    st.write(f"**Pode Excluir:** {'Sim' if u.pode_excluir or u.role == 'admin' else 'Não'}")
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("Editar Usuário", key=f"edit_usr_{u.id}", use_container_width=True):
+                            dialog_editar_usuario(u.id)
+                    with c2:
+                        if u.username == 'admin':
+                            st.info("Admin não pode ser excluído.")
+                        else:
+                            if st.button("Excluir", key=f"del_usr_{u.id}", type="primary", use_container_width=True):
+                                from db_config import registrar_log
+                                registrar_log(f"Excluiu o usuário '{u.username}'")
+                                db.delete(u)
+                                db.commit()
+                                st.rerun()
+
+    # --- TAB 8: LOGS ---
+    with t_log:
+        st.markdown(f"### {gold_icon('clock')} Registro de Atividades (Log)", unsafe_allow_html=True)
+        from db_config import LogAuditoria
+        
+        col_l1, col_l2, col_l3 = st.columns(3)
+        with col_l1:
+            data_filtro = st.date_input("Data do Registro")
+        with col_l2:
+            usuarios_logs = db.query(LogAuditoria.usuario).distinct().all()
+            user_opts = ["Todos"] + [x[0] for x in usuarios_logs if x[0]]
+            user_filtro = st.selectbox("Filtrar por Usuário", user_opts)
+        with col_l3:
+            busca_acao = st.text_input("Buscar na Ação")
+            
+        logs_query = db.query(LogAuditoria).filter(LogAuditoria.data_hora.like(f"{data_filtro.strftime('%Y-%m-%d')}%"))
+        if user_filtro != "Todos":
+            logs_query = logs_query.filter(LogAuditoria.usuario == user_filtro)
+        if busca_acao:
+            logs_query = logs_query.filter(LogAuditoria.acao.ilike(f"%{busca_acao}%"))
+            
+        logs = logs_query.order_by(LogAuditoria.id.desc()).all()
+        
+        st.markdown("---")
+        if logs:
+            for log in logs:
+                dt_obj = datetime.fromisoformat(log.data_hora)
+                st.markdown(f"<div style='font-size:12px; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px;'>"
+                            f"<span style='color:#888; font-weight:600;'>{dt_obj.strftime('%d/%m/%Y %H:%M:%S')}</span> &nbsp;|&nbsp; "
+                            f"<span style='color:#333; font-weight:700;'>@{log.usuario}</span> &nbsp;|&nbsp; "
+                            f"<span style='color:var(--text-main);'>{log.acao}</span>"
+                            f"</div>", unsafe_allow_html=True)
+        else:
+            st.info("Nenhum registro encontrado para os filtros selecionados.")
+
 
     # --- TAB 8: METAS ---
     with t_meta:
@@ -402,9 +521,9 @@ def render_cadastros():
         metas = db.query(MetaApp).order_by(MetaApp.data_inicial.desc()).all()
         if metas:
             for m in metas:
-                with st.expander(f"{m.descricao} (R$ {m.valor:,.2f})"):
+                with st.expander(f"{m.descricao} (R$ {formatar_moeda(m.valor)})"):
                     st.write(f"**Período:** {m.data_inicial.strftime('%d/%m/%Y')} a {m.data_final.strftime('%d/%m/%Y')}")
-                    if st.button("Excluir", key=f"del_meta_{m.id}", type="primary"):
+                    if st.session_state.get("pode_excluir", False) and st.button("Excluir", key=f"del_meta_{m.id}", type="primary"):
                         db.delete(m)
                         db.commit()
                         st.rerun()

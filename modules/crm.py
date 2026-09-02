@@ -1,3 +1,10 @@
+
+def formatar_moeda(valor):
+    try:
+        return f"{valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    except:
+        return '0,00'
+
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -153,7 +160,7 @@ def render_crm():
     
     for _, row in df.iterrows():
         c_id = row['id']
-        gasto_f = f"R$ {row['Gasto Total']:,.2f}"
+        gasto_f = f"R$ {formatar_moeda(row[\'Gasto Total\'])}"
         
         selo_color = "#555"
         selo_bg = "transparent"
