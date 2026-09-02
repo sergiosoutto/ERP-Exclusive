@@ -191,8 +191,8 @@ def render_login():
                 st.session_state['logged_in'] = True
                 st.session_state['username'] = user.username
                 st.session_state['user_role'] = user.role
-                st.session_state['permissoes'] = user.permissoes
-                st.session_state['pode_excluir'] = user.pode_excluir or user.role == "admin"
+                st.session_state['permissoes'] = getattr(user, 'permissoes', 'todas')
+                st.session_state['pode_excluir'] = getattr(user, 'pode_excluir', False) or user.role == "admin"
                 from db_config import registrar_log
                 registrar_log("Fez login no sistema")
                 st.rerun()

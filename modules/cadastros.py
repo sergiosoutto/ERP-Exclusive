@@ -241,7 +241,7 @@ def dialog_editar_usuario(u_id):
             permissoes_selecionadas.append(menu)
             
     st.markdown("**Ações:**")
-    pode_excluir = st.checkbox("Pode excluir registros", value=u.pode_excluir, key=f"edit_pode_excluir_{u_id}")
+    pode_excluir = st.checkbox("Pode excluir registros", value=getattr(u, "pode_excluir", False), key=f"edit_pode_excluir_{u_id}")
     
     if st.button("Salvar Alterações", type="primary", use_container_width=True):
         if nova_senha:
@@ -457,7 +457,7 @@ def render_cadastros():
                 with st.expander(f"@{u.username} ({u.role})"):
                     perms = "Todas" if u.permissoes == "todas" or u.role == "admin" else u.permissoes
                     st.write(f"**Permissões:** {perms}")
-                    st.write(f"**Pode Excluir:** {'Sim' if u.pode_excluir or u.role == 'admin' else 'Não'}")
+                    st.write(f"**Pode Excluir:** {'Sim' if getattr(u, 'pode_excluir', False) or u.role == 'admin' else 'Não'}")
                     
                     c1, c2 = st.columns(2)
                     with c1:
