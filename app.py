@@ -188,7 +188,7 @@ def render_login():
             db = next(get_db())
             user = db.query(Usuario).filter(Usuario.username == username).first()
             if user and user.password_hash == hash_password(password):
-                                st.session_state['logged_in'] = True
+                st.session_state['logged_in'] = True
                 st.session_state['username'] = user.username
                 st.session_state['user_role'] = user.role
                 st.session_state['permissoes'] = user.permissoes
