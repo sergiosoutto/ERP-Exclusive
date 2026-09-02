@@ -479,9 +479,12 @@ def render_fast_launch():
     # ==========================================
     # ABA 1: NOVO ATENDIMENTO
     # ==========================================
-    # Pré-carregar dicionário de clientes
+    # Pré-carregar dicionários globais
     todos_cli = db.query(Cliente).all()
     clientes_map = {c.id: c for c in todos_cli}
+    
+    todos_servs = db.query(Servico).all()
+    servico_map = {s.id: s for s in todos_servs}
     
     if aba_selecionada == "Novo":
         st.markdown(f"<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
