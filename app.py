@@ -6,9 +6,11 @@ import hashlib
 # ==========================================
 # 1. Configuração Inicial da Página
 # ==========================================
+from PIL import Image
+
 st.set_page_config(
     page_title="Crivo | Car Studio",
-    page_icon="🚘",
+    page_icon=Image.open("icon.png"),
     layout="wide",
     initial_sidebar_state="auto"
 )
