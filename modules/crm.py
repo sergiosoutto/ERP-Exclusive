@@ -160,7 +160,7 @@ def render_crm():
     
     for _, row in df.iterrows():
         c_id = row['id']
-        gasto_f = f"R$ {formatar_moeda(row[\'Gasto Total\'])}"
+        gasto_f = f"R$ {formatar_moeda(row['Gasto Total'])}"
         
         selo_color = "#555"
         selo_bg = "transparent"
