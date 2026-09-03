@@ -2,6 +2,14 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 from db_config import init_db, get_db, Usuario
 import hashlib
+import extra_streamlit_components as stx
+from datetime import datetime, timedelta
+
+@st.cache_resource
+def get_cookie_manager():
+    return stx.CookieManager()
+cookie_manager = get_cookie_manager()
+
 
 # ==========================================
 # 1. Configuração Inicial da Página
@@ -189,15 +197,51 @@ def render_login():
         if st.button("Entrar", type="primary", use_container_width=True):
             db = next(get_db())
             user = db.query(Usuario).filter(Usuario.username == username).first()
-            if user and user.password_hash == hash_password(password):
-                st.session_state['logged_in'] = True
-                st.session_state['username'] = user.username
-                st.session_state['user_role'] = user.role
-                st.session_state['permissoes'] = getattr(user, 'permissoes', 'todas')
-                st.session_state['pode_excluir'] = getattr(user, 'pode_excluir', False) or user.role == "admin"
-                from db_config import registrar_log
-                registrar_log("Fez login no sistema")
-                st.rerun()
+            if user:
+                agora = datetime.now()
+                # Verifica bloqueio
+                if user.bloqueado_ate:
+                    try:
+                        bloq_dt = datetime.fromisoformat(user.bloqueado_ate)
+                        if agora < bloq_dt:
+                            minutos_restantes = int((bloq_dt - agora).total_seconds() / 60) + 1
+                            st.error(f"Conta bloqueada por segurança. Tente novamente em {minutos_restantes} minuto(s).")
+                            return
+                        else:
+                            user.bloqueado_ate = None
+                            user.tentativas_falhas = 0
+                            db.commit()
+                    except: pass
+                
+                # Check password
+                if user.password_hash == hash_password(password):
+                    user.tentativas_falhas = 0
+                    user.bloqueado_ate = None
+                    db.commit()
+                    
+                    st.session_state['logged_in'] = True
+                    st.session_state['username'] = user.username
+                    st.session_state['user_role'] = user.role
+                    st.session_state['permissoes'] = getattr(user, 'permissoes', 'todas')
+                    st.session_state['pode_excluir'] = getattr(user, 'pode_excluir', False) or user.role == "admin"
+                    from db_config import registrar_log
+                    registrar_log("Fez login no sistema")
+                    
+                    # Salva cookie por 30 dias
+                    cookie_manager.set('auth_user', user.username, max_age=86400 * 30, key="set_auth")
+                    st.rerun()
+                else:
+                    falhas = getattr(user, 'tentativas_falhas', 0) + 1
+                    user.tentativas_falhas = falhas
+                    
+                    if falhas >= 5:
+                        tempo_bloq = 15 if falhas <= 6 else 60
+                        user.bloqueado_ate = (agora + timedelta(minutes=tempo_bloq)).isoformat()
+                        db.commit()
+                        st.error(f"Muitas tentativas! Acesso bloqueado por {tempo_bloq} minutos.")
+                    else:
+                        db.commit()
+                        st.error(f"Senha incorreta! Restam {5 - falhas} tentativas antes do bloqueio.")
             else:
                 st.error("Usuário ou senha inválidos.")
 
@@ -205,7 +249,21 @@ def render_login():
 # 4. Estrutura Principal e Menu Lateral
 # ==========================================
 def main():
-    if not st.session_state['logged_in']:
+    # Tenta puxar o login do cookie antes de barrar
+    if not st.session_state.get('logged_in'):
+        auth_cookie = cookie_manager.get('auth_user')
+        if auth_cookie:
+            db = next(get_db())
+            user = db.query(Usuario).filter(Usuario.username == auth_cookie).first()
+            if user:
+                st.session_state['logged_in'] = True
+                st.session_state['username'] = user.username
+                st.session_state['user_role'] = user.role
+                st.session_state['permissoes'] = getattr(user, 'permissoes', 'todas')
+                st.session_state['pode_excluir'] = getattr(user, 'pode_excluir', False) or user.role == "admin"
+                st.rerun()
+                
+    if not st.session_state.get('logged_in'):
         render_login()
         return
 
