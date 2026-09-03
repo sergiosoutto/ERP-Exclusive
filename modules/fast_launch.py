@@ -97,9 +97,10 @@ def dialog_novo_cliente():
             )
             db.add(novo_cliente)
             db.commit()
+            db.refresh(novo_cliente)
             registrar_log(f"Cadastrou o cliente: {novo_nome}")
             st.session_state["success_msg"] = "Cliente cadastrado com sucesso!"
-            st.session_state["novo_cliente_codigo"] = codigo_seq
+            st.session_state["novo_cliente_id"] = novo_cliente.id
             st.rerun()
 
 @dialog_decorator("Confirmar Exclusão")
@@ -552,16 +553,20 @@ def render_fast_launch():
             else:
                 clientes_filtrados = db.query(Cliente).order_by(Cliente.nome).all()
                 
-            cliente_opcoes = ["-- Selecione o Cliente --"] + [f"{c.codigo} | {c.nome or 'Desconhecido'} ({c.placa_veiculo or 'Sem Placa'})" for c in clientes_filtrados if c.codigo != "CLI-0000"]
+            cliente_opcoes = ["-- Selecione o Cliente --"] + [
+                f"#{c.id} | {c.nome or 'Desconhecido'} · {c.modelo_veiculo or 'S/Veículo'} ({c.placa_veiculo or 'S/Placa'})"
+                for c in clientes_filtrados if c.codigo != "CLI-0000"
+            ]
             
             index_sel = 1 if len(cliente_opcoes) == 2 else 0
-            if 'novo_cliente_codigo' in st.session_state:
+            if 'novo_cliente_id' in st.session_state:
                 for idx, op in enumerate(cliente_opcoes):
-                    if op.startswith(st.session_state['novo_cliente_codigo']):
+                    if op.startswith(f"#{st.session_state['novo_cliente_id']} |"):
                         index_sel = idx
                         break
-                # Only use once
-                del st.session_state['novo_cliente_codigo']
+                del st.session_state['novo_cliente_id']
+            elif 'novo_cliente_codigo' in st.session_state:
+                del st.session_state['novo_cliente_codigo']  # cleanup legacy key
             cliente_selecionado = st.selectbox("Cliente", cliente_opcoes, index=index_sel, label_visibility="collapsed")
             
             st.markdown("<hr style='margin:12px 0;'>", unsafe_allow_html=True)
@@ -605,8 +610,8 @@ def render_fast_launch():
             if st.button(btn_label, type="primary", use_container_width=True):
 
                 if cliente_selecionado and not cliente_selecionado.startswith("--"):
-                    cli_codigo = cliente_selecionado.split(" |")[0]
-                    cliente_ref = db.query(Cliente).filter(Cliente.codigo == cli_codigo).first()
+                    cli_id = int(cliente_selecionado.split(" |")[0].replace("#", "").strip())
+                    cliente_ref = db.query(Cliente).filter(Cliente.id == cli_id).first()
                     
                     last_at = db.query(Atendimento).order_by(Atendimento.id.desc()).first()
                     next_id = (last_at.id + 1) if last_at else 1
