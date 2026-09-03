@@ -548,9 +548,9 @@ def render_fast_launch():
                 clientes_filtrados = db.query(Cliente).filter(
                     (Cliente.nome.ilike(f"%{busca_cliente}%")) | 
                     (Cliente.placa_veiculo.ilike(f"%{busca_cliente}%"))
-                ).limit(20).all()
+                ).order_by(Cliente.nome).all()
             else:
-                clientes_filtrados = db.query(Cliente).limit(5).all()
+                clientes_filtrados = db.query(Cliente).order_by(Cliente.nome).all()
                 
             cliente_opcoes = ["-- Selecione o Cliente --"] + [f"{c.codigo} | {c.nome or 'Desconhecido'} ({c.placa_veiculo or 'Sem Placa'})" for c in clientes_filtrados if c.codigo != "CLI-0000"]
             
