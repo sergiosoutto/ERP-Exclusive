@@ -96,6 +96,7 @@ def dialog_novo_cliente():
             )
             db.add(novo_cliente)
             db.commit()
+            registrar_log(f"Cadastrou o cliente: {novo_nome}")
             st.session_state["success_msg"] = "Cliente cadastrado com sucesso!"
             st.session_state["novo_cliente_codigo"] = codigo_seq
             st.rerun()
@@ -129,9 +130,12 @@ def dialog_reagendar(at_id):
         except: pass
         
     nova_data = st.date_input("Nova Data", value=dt_atual)
+    import datetime
+    nova_hora = st.time_input("Nova Hora", value=datetime.time(9, 0))
     
     if st.button("Confirmar Reagendamento", type="primary", use_container_width=True):
-        at.data_agendamento = nova_data.isoformat()
+        at.data_agendamento = f"{nova_data.isoformat()} {nova_hora.strftime('%H:%M')}"
+        registrar_log(f"Reagendou a OS: {at.codigo}")
         db.commit()
         st.session_state['success_msg'] = "OS reagendada com sucesso!"
         st.rerun()
@@ -255,6 +259,7 @@ def dialog_checkout(at_id):
     obs = st.text_input("Observação", value=auto_obs, placeholder="Ex: Higienização impecável...")
     
     if st.button("Confirmar Pagamento e Baixar Estoque", type="primary", use_container_width=True):
+        registrar_log(f"Finalizou a OS: {at.codigo}")
         at.status = "Finalizado"
         at.data_conclusao = obter_hora_local().isoformat()
         at.observacoes = obs
@@ -466,7 +471,7 @@ def render_fast_launch():
     
 
     # Contagem de Agendados para hoje
-    agendados_hoje = db.query(Atendimento).filter(Atendimento.status == "Agendado", Atendimento.data_agendamento.like(f"{hoje_str_patio}%")).count()
+    agendados_hoje = db.query(Atendimento).filter(Atendimento.status == "Agendado").count()
     if agendados_hoje > 0:
         lbl_agenda = f"{gold_icon('bell-fill')} Agenda ({agendados_hoje})"
     else:
@@ -536,13 +541,18 @@ def render_fast_launch():
             st.markdown("<br>", unsafe_allow_html=True)
             
 
-            c_ag1, c_ag2 = st.columns([1, 2])
+            c_ag1, c_ag2, c_ag3 = st.columns([1, 1.5, 1.5])
             with c_ag1:
                 is_agendamento = st.checkbox("Agendar OS?", value=False)
-            with c_ag2:
-                data_agendamento = None
-                if is_agendamento:
+            
+            data_agendamento = None
+            hora_agendamento = None
+            if is_agendamento:
+                with c_ag2:
                     data_agendamento = st.date_input("Data do Serviço")
+                with c_ag3:
+                    import datetime
+                    hora_agendamento = st.time_input("Hora", value=datetime.time(9, 0))
                     
             btn_label = "Agendar Serviço" if is_agendamento else "Enviar para o Pátio"
             if st.button(btn_label, type="primary", use_container_width=True):
@@ -558,7 +568,7 @@ def render_fast_launch():
                     total_atendimento = valor_final + sum(servicos_extra.values())
                     
                     stts = "Agendado" if is_agendamento else "Aguardando"
-                    dt_agend = data_agendamento.isoformat() if is_agendamento and data_agendamento else None
+                    dt_agend = f"{data_agendamento.isoformat()} {hora_agendamento.strftime('%H:%M')}" if is_agendamento and data_agendamento and hora_agendamento else (data_agendamento.isoformat() if is_agendamento and data_agendamento else None)
                     novo_at = Atendimento(
                         codigo=codigo_seq, cliente_id=cliente_ref.id, status=stts,
                         valor_total=total_atendimento, data_criacao=obter_hora_local().isoformat(),
@@ -574,6 +584,7 @@ def render_fast_launch():
                         db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=s_id, valor_cobrado=v))
                         
                     db.commit()
+                    registrar_log(f"Lançou a {codigo_seq} para {cliente_ref.nome}")
                     st.session_state['success_msg'] = f"OS {codigo_seq} enviada ao Pátio!"
                     st.rerun()
                 else:
@@ -717,6 +728,9 @@ def render_fast_launch():
         if not agendados:
             st.info("Nenhum serviço agendado.")
         else:
+            total_agendado = sum(a.valor_total for a in agendados)
+            st.markdown(f"<div style='background:#fcfcfc; border:1px solid #eee; border-radius:8px; padding:12px; margin-bottom:15px; display:flex; justify-content:space-between; align-items:center;'><div><span style='font-size:12px; font-weight:700; color:#888; text-transform:uppercase;'>Volume Futuro</span><br><span style='font-size:18px; font-weight:800; color:var(--accent);'>R$ {formatar_moeda(total_agendado)}</span></div><div style='text-align:right;'><span style='font-size:12px; color:#888;'>Total de Veículos</span><br><span style='font-size:18px; font-weight:800;'>{len(agendados)}</span></div></div>", unsafe_allow_html=True)
+            
             for at in agendados:
                 cli = clientes_map.get(at.cliente_id)
                 cli_nome = cli.nome if cli else "Desconhecido"
@@ -725,10 +739,15 @@ def render_fast_launch():
                 dt_str = "Data não definida"
                 if at.data_agendamento:
                     try:
-                        dt_obj = datetime.fromisoformat(at.data_agendamento)
-                        dt_str = dt_obj.strftime('%d/%m/%Y')
-                    except:
-                        dt_str = at.data_agendamento
+                        # PODE ESTAR EM YYYY-MM-DD ou YYYY-MM-DD HH:MM
+                        import datetime
+                        if " " in at.data_agendamento:
+                            dt_str = datetime.datetime.strptime(at.data_agendamento, "%Y-%m-%d %H:%M").strftime('%d/%m/%Y às %H:%M')
+                        else:
+                            dt_obj = datetime.datetime.fromisoformat(at.data_agendamento)
+                            dt_str = dt_obj.strftime('%d/%m/%Y')
+                    except Exception as e:
+                        dt_str = str(at.data_agendamento)
                         
                 with st.container(border=True):
                     st.markdown(f"<p style='margin:0; font-size:14px; font-weight:600;'>{cli_nome} <span style='font-size:10px; font-weight:normal; color:var(--text-sec);'>({at.codigo})</span></p>", unsafe_allow_html=True)
