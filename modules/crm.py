@@ -143,9 +143,31 @@ def render_crm():
         
     df = df.sort_values(by="Gasto Total", ascending=False)
     
-    # Cabeçalho da tabela
+    # Totalizador no topo
+    total_clientes = len(df)
+    total_gasto = df['Gasto Total'].sum()
+    total_os = df['Qtd OS'].sum()
+    st.markdown(f"""
+    <div style='display:flex; gap:16px; margin-bottom:14px;'>
+        <div style='background:#f4f6f8; border-radius:8px; padding:10px 18px; flex:1; text-align:center;'>
+            <div style='font-size:10px; font-weight:700; color:#888; text-transform:uppercase;'>Total de Clientes</div>
+            <div style='font-size:22px; font-weight:800; color:#1D1D1F;'>{total_clientes}</div>
+        </div>
+        <div style='background:#f4f6f8; border-radius:8px; padding:10px 18px; flex:1; text-align:center;'>
+            <div style='font-size:10px; font-weight:700; color:#888; text-transform:uppercase;'>Total de Serviços</div>
+            <div style='font-size:22px; font-weight:800; color:#1D1D1F;'>{int(total_os)}</div>
+        </div>
+        <div style='background:#f4f6f8; border-radius:8px; padding:10px 18px; flex:1; text-align:center;'>
+            <div style='font-size:10px; font-weight:700; color:#888; text-transform:uppercase;'>Volume Financeiro</div>
+            <div style='font-size:22px; font-weight:800; color:#C5A059;'>R$ {formatar_moeda(total_gasto)}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Cabeçalho da tabela com coluna #
     st.markdown("""
-    <div style='display:grid; grid-template-columns: 2fr 1.5fr 1.5fr 1fr 1.2fr 0.8fr 1.2fr 1fr 1fr; gap:10px; padding:10px 15px; background:#f4f6f8; border-radius:6px; font-size:11px; font-weight:700; color:#555; text-transform:uppercase; margin-bottom:10px;'>
+    <div style='display:grid; grid-template-columns: 0.4fr 2fr 1.5fr 1.5fr 1fr 1.2fr 0.8fr 1.2fr 1fr 1fr; gap:10px; padding:10px 15px; background:#f4f6f8; border-radius:6px; font-size:11px; font-weight:700; color:#555; text-transform:uppercase; margin-bottom:10px;'>
+        <div>#</div>
         <div>Nome</div>
         <div>Celular</div>
         <div>Veículo</div>
@@ -158,7 +180,7 @@ def render_crm():
     </div>
     """, unsafe_allow_html=True)
     
-    for _, row in df.iterrows():
+    for row_num, (_, row) in enumerate(df.iterrows(), start=1):
         c_id = row['id']
         gasto_f = f"R$ {formatar_moeda(row['Gasto Total'])}"
         
@@ -174,7 +196,8 @@ def render_crm():
             selo_color = "#7f8c8d"
             selo_bg = "#f2f4f4"
             
-        col1, col2, col3, col4, col5, col6, col7, col8, col9 = st.columns([2, 1.5, 1.5, 1, 1.2, 0.8, 1.2, 1, 1])
+        col0, col1, col2, col3, col4, col5, col6, col7, col8, col9 = st.columns([0.4, 2, 1.5, 1.5, 1, 1.2, 0.8, 1.2, 1, 1])
+        with col0: st.markdown(f"<div style='font-size:11px; color:#aaa; font-weight:600; margin-top:8px;'>{row_num}</div>", unsafe_allow_html=True)
         
         with col1: st.markdown(f"<div style='font-size:13px; font-weight:600; margin-top:8px;'>{row['Nome']}</div>", unsafe_allow_html=True)
         with col2: st.markdown(f"<div style='font-size:12px; color:#555; margin-top:8px;'>{row['Celular']}</div>", unsafe_allow_html=True)
