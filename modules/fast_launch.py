@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from db_config import get_db, Cliente, Servico, Produto, Atendimento, ItemAtendimento, FormaPagamento, ServicoInsumo, MetaApp
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, time
 import unicodedata
 
 # Helper para remover acentuação de strings
@@ -130,8 +130,7 @@ def dialog_reagendar(at_id):
         except: pass
         
     nova_data = st.date_input("Nova Data", value=dt_atual)
-    import datetime
-    nova_hora = st.time_input("Nova Hora", value=datetime.time(9, 0))
+    nova_hora = st.time_input("Nova Hora", value=time(9, 0))
     
     if st.button("Confirmar Reagendamento", type="primary", use_container_width=True):
         at.data_agendamento = f"{nova_data.isoformat()} {nova_hora.strftime('%H:%M')}"
@@ -551,8 +550,7 @@ def render_fast_launch():
                 with c_ag2:
                     data_agendamento = st.date_input("Data do Serviço")
                 with c_ag3:
-                    import datetime
-                    hora_agendamento = st.time_input("Hora", value=datetime.time(9, 0))
+                    hora_agendamento = st.time_input("Hora", value=time(9, 0))
                     
             btn_label = "Agendar Serviço" if is_agendamento else "Enviar para o Pátio"
             if st.button(btn_label, type="primary", use_container_width=True):
@@ -740,11 +738,10 @@ def render_fast_launch():
                 if at.data_agendamento:
                     try:
                         # PODE ESTAR EM YYYY-MM-DD ou YYYY-MM-DD HH:MM
-                        import datetime
                         if " " in at.data_agendamento:
-                            dt_str = datetime.datetime.strptime(at.data_agendamento, "%Y-%m-%d %H:%M").strftime('%d/%m/%Y às %H:%M')
+                            dt_str = datetime.strptime(at.data_agendamento, "%Y-%m-%d %H:%M").strftime('%d/%m/%Y às %H:%M')
                         else:
-                            dt_obj = datetime.datetime.fromisoformat(at.data_agendamento)
+                            dt_obj = datetime.fromisoformat(at.data_agendamento)
                             dt_str = dt_obj.strftime('%d/%m/%Y')
                     except Exception as e:
                         dt_str = str(at.data_agendamento)
