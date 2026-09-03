@@ -527,28 +527,32 @@ def render_fast_launch():
     # ==========================================
     # ABA 1: NOVO ATENDIMENTO
     # ==========================================
-    # Pré-carregar dicionários globais
-    todos_cli = db.query(Cliente).all()
-    clientes_map = {c.id: c for c in todos_cli}
     
-    todos_servs = db.query(Servico).all()
-    servico_map = {s.id: s for s in todos_servs}
-    
+    # Lazy load dicionarios para evitar lentidao
+    active_client_ids = set([a.cliente_id for a in em_andamento] + [a.cliente_id for a in concluidos_hoje])
+    agendados_raw = []
+    if aba_selecionada == lbl_agenda:
+        agendados_raw = db.query(Atendimento).filter(Atendimento.status == "Agendado").order_by(Atendimento.data_agendamento.asc()).all()
+        active_client_ids.update([a.cliente_id for a in agendados_raw])
+        
+    clientes_map = {c.id: c for c in db.query(Cliente).filter(Cliente.id.in_(active_client_ids)).all()} if active_client_ids else {}
+    servico_map = {s.id: s for s in db.query(Servico).all()} 
+
     if aba_selecionada == "Novo":
         st.markdown(f"<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
         with st.container(border=True):
             busca_cliente = st.text_input("Pesquisar Cliente", placeholder="Nome ou Placa...")
             if st.button("Novo Cliente", use_container_width=True): dialog_novo_cliente()
             
-            termo = remover_acentos(busca_cliente.strip().lower())
-            cliente_opcoes = ["-- Selecione o Cliente --"]
-            clientes = db.query(Cliente).all()
-            for c in clientes:
-                if c.codigo == "CLI-0000": continue
-                nome = remover_acentos(c.nome or "").lower()
-                placa = remover_acentos(c.placa_veiculo or "").lower()
-                if termo and (termo not in nome and termo not in placa): continue
-                cliente_opcoes.append(f"{c.codigo} | {c.nome or 'Desconhecido'} ({c.placa_veiculo or 'Sem Placa'})")
+            if busca_cliente:
+                clientes_filtrados = db.query(Cliente).filter(
+                    (Cliente.nome.ilike(f"%{busca_cliente}%")) | 
+                    (Cliente.placa_veiculo.ilike(f"%{busca_cliente}%"))
+                ).limit(20).all()
+            else:
+                clientes_filtrados = db.query(Cliente).limit(5).all()
+                
+            cliente_opcoes = ["-- Selecione o Cliente --"] + [f"{c.codigo} | {c.nome or 'Desconhecido'} ({c.placa_veiculo or 'Sem Placa'})" for c in clientes_filtrados if c.codigo != "CLI-0000"]
             
             index_sel = 1 if len(cliente_opcoes) == 2 else 0
             if 'novo_cliente_codigo' in st.session_state:
@@ -772,7 +776,7 @@ def render_fast_launch():
     # ==========================================
     elif aba_selecionada == lbl_agenda:
         st.markdown(f"### {gold_icon('calendar')} Serviços Agendados", unsafe_allow_html=True)
-        agendados = agendados_raw # Já buscado no lazy load acima
+        agendados = agendados_raw if "agendados_raw" in locals() else [] # Já buscado no lazy load acima
         
         if not agendados:
             st.info("Nenhum serviço agendado.")
