@@ -5,7 +5,7 @@ import hashlib
 import extra_streamlit_components as stx
 from datetime import datetime, timedelta
 
-@st.cache_resource(show_spinner=False, experimental_allow_widgets=True)
+@st.cache_resource(show_spinner=False)
 def get_cookie_manager():
     return stx.CookieManager(key="global_cookie_manager")
 
