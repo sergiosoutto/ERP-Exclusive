@@ -224,8 +224,8 @@ def render_login():
                     from db_config import registrar_log
                     registrar_log("Fez login no sistema")
                     
-                    # Salva cookie por 30 dias
-                    cookie_manager.set('auth_user', user.username, max_age=86400 * 30, key="set_auth")
+                    # Salva usuario na URL para persistir sessao
+                    st.query_params['auth_user'] = user.username
                     st.rerun()
                 else:
                     falhas = getattr(user, 'tentativas_falhas', 0) + 1
