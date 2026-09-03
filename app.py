@@ -2,22 +2,10 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 from db_config import init_db, get_db, Usuario
 import hashlib
-import extra_streamlit_components as stx
 from datetime import datetime, timedelta
 
 # Instantiate CookieManager directly with a static key to avoid remounts and warnings
-# Suppress CachedWidgetWarning for CookieManager
-try:
-    from streamlit.elements.lib import policies
-    policies.check_cache_replay_rules = lambda *args, **kwargs: None
-except:
-    pass
 
-@st.cache_resource(show_spinner=False)
-def get_cookie_manager():
-    return stx.CookieManager(key="global_cookie_manager")
-
-cookie_manager = get_cookie_manager()
 
 
 # ==========================================
@@ -258,19 +246,19 @@ def render_login():
 # 4. Estrutura Principal e Menu Lateral
 # ==========================================
 def main():
-    # Tenta puxar o login do cookie antes de barrar
+    # Recupera sessao pelos parametros da URL para sobreviver a inatividade
     if not st.session_state.get('logged_in'):
-        auth_cookie = cookie_manager.get('auth_user')
-        if auth_cookie:
+        auth_token = st.query_params.get('auth_user', None)
+        if auth_token:
             db = next(get_db())
-            user = db.query(Usuario).filter(Usuario.username == auth_cookie).first()
+            user = db.query(Usuario).filter(Usuario.username == auth_token).first()
             if user:
                 st.session_state['logged_in'] = True
                 st.session_state['username'] = user.username
                 st.session_state['user_role'] = user.role
                 st.session_state['permissoes'] = getattr(user, 'permissoes', 'todas')
                 st.session_state['pode_excluir'] = getattr(user, 'pode_excluir', False) or user.role == "admin"
-                st.rerun()
+                # Não da rerun aqui senao entra em loop infinito, apenas aceita o login
                 
     if not st.session_state.get('logged_in'):
         render_login()
