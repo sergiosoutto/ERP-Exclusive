@@ -22,10 +22,10 @@ st.set_page_config(
 
 # Inicializa o banco de dados apenas uma vez para não gerar lentidão na nuvem
 @st.cache_resource(show_spinner=False)
-def initialize_database_v5():
+def initialize_database_v6():
     init_db()
 
-initialize_database_v5()
+initialize_database_v6()
 
 # ==========================================
 # 2. Injeção de CSS Customizado (Design Apple)

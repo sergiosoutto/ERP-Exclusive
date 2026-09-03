@@ -448,6 +448,10 @@ def init_db():
         db.rollback()
     try:
         db.execute(text("ALTER TABLE atendimentos ADD COLUMN data_pronto VARCHAR;"))
+    except:
+        db.rollback()
+    try:
+        db.execute(text("ALTER TABLE atendimentos ADD COLUMN hora_prevista_saida VARCHAR;"))
         db.commit()
     except Exception:
         db.rollback()

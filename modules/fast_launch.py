@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from db_config import get_db, Cliente, Servico, Produto, Atendimento, ItemAtendimento, FormaPagamento, ServicoInsumo, MetaApp
+from db_config import get_db, Cliente, Servico, Produto, Atendimento, ItemAtendimento, FormaPagamento, ServicoInsumo, MetaApp, registrar_log
 from datetime import datetime, timedelta, timezone, time
 import unicodedata
 
@@ -287,7 +287,51 @@ def dialog_checkout(at_id):
         st.session_state['success_msg'] = f"Venda Finalizada! Baixa de insumos concluída."
         st.rerun()
 
+
+@dialog_decorator("Iniciar Serviço")
+def dialog_iniciar_lavagem(at_id):
+    db = next(get_db())
+    at = db.query(Atendimento).filter(Atendimento.id == at_id).first()
+    if not at: return
+    
+    st.write(f"Iniciando: **{at.codigo}**")
+    
+    agora = obter_hora_local()
+    dt_atual = st.date_input("Data de Início", value=agora.date())
+    hr_atual = st.time_input("Hora de Início", value=agora.time())
+    
+    if st.button("Confirmar Início", type="primary", use_container_width=True):
+        at.status = "Lavando"
+        dt_final = datetime.combine(dt_atual, hr_atual).astimezone(timezone(timedelta(hours=-3))).isoformat()
+        at.data_inicio = dt_final
+        registrar_log(f"Iniciou a OS: {at.codigo}")
+        db.commit()
+        st.session_state['success_msg'] = f"OS {at.codigo} em execução!"
+        st.rerun()
+
+@dialog_decorator("Sinalizar Pronto")
+def dialog_sinalizar_pronto(at_id):
+    db = next(get_db())
+    at = db.query(Atendimento).filter(Atendimento.id == at_id).first()
+    if not at: return
+    
+    st.write(f"Concluindo etapa: **{at.codigo}**")
+    
+    agora = obter_hora_local()
+    dt_atual = st.date_input("Data de Conclusão", value=agora.date())
+    hr_atual = st.time_input("Hora de Conclusão", value=agora.time())
+    
+    if st.button("Confirmar Conclusão", type="primary", use_container_width=True):
+        at.status = "Pronto"
+        dt_final = datetime.combine(dt_atual, hr_atual).astimezone(timezone(timedelta(hours=-3))).isoformat()
+        at.data_pronto = dt_final
+        registrar_log(f"Marcou OS como pronta: {at.codigo}")
+        db.commit()
+        st.session_state['success_msg'] = f"OS {at.codigo} concluída!"
+        st.rerun()
+
 def render_fast_launch():
+
     # CSS Customizado mínimo e seguro
     st.markdown("""
         <style>
@@ -538,7 +582,8 @@ def render_fast_launch():
                     servicos_extra[servico_opcoes[sel].id] = v
             
             st.markdown("<br>", unsafe_allow_html=True)
-            
+            hora_prevista = st.text_input("Previsão de Saída (Ex: Imediato, 17:30, Fim da Tarde)", value="Imediato")
+            st.markdown("<br>", unsafe_allow_html=True)
 
             c_ag1, c_ag2, c_ag3 = st.columns([1, 1.5, 1.5])
             with c_ag1:
@@ -570,7 +615,7 @@ def render_fast_launch():
                     novo_at = Atendimento(
                         codigo=codigo_seq, cliente_id=cliente_ref.id, status=stts,
                         valor_total=total_atendimento, data_criacao=obter_hora_local().isoformat(),
-                        data_agendamento=dt_agend
+                        data_agendamento=dt_agend, hora_prevista_saida=hora_prevista
                     )
                     db.add(novo_at)
                     db.flush()
