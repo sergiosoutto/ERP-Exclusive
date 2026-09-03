@@ -157,6 +157,9 @@ class Atendimento(Base):
     observacoes = Column(String)
     parcelas = Column(Integer, default=1)
     data_agendamento = Column(String)
+    data_inicio = Column(String)
+    data_pronto = Column(String)
+    hora_prevista_saida = Column(String)
 
 class ItemAtendimento(Base):
     __tablename__ = "itens_atendimento"
