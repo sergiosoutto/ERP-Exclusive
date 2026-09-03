@@ -3,6 +3,7 @@ import pandas as pd
 from db_config import get_db, Cliente, Servico, Produto, Atendimento, ItemAtendimento, FormaPagamento, ServicoInsumo, MetaApp, registrar_log
 from datetime import datetime, timedelta, timezone, time
 import unicodedata
+from sqlalchemy import func
 
 # Helper para remover acentuação de strings
 def remover_acentos(texto):
@@ -440,14 +441,13 @@ def render_fast_launch():
         # Calcula meta apenas para os dias desta semana que estão dentro do período da meta
         meta_semanal = sum(get_peso(meta_atual, segunda_atual + timedelta(days=i)) * valor_por_peso for i in range(6) if d1_meta <= (segunda_atual + timedelta(days=i)) <= d2_meta)
         
-        atends_mes = db.query(Atendimento).filter(Atendimento.data_criacao >= d1_meta.strftime("%Y-%m-%d"), Atendimento.data_criacao <= d2_meta.strftime("%Y-%m-%dT23:59:59"), Atendimento.status == "Finalizado").all()
-        fat_mes = sum(a.valor_total for a in atends_mes)
+        # Optimized Metas using func.sum
+        fat_mes = db.query(func.sum(Atendimento.valor_total)).filter(Atendimento.data_criacao >= d1_meta.strftime("%Y-%m-%d"), Atendimento.data_criacao <= d2_meta.strftime("%Y-%m-%dT23:59:59"), Atendimento.status == "Finalizado").scalar() or 0.0
         
         seg_str = segunda_atual.strftime("%Y-%m-%d")
-        atends_semana = [a for a in atends_mes if a.data_criacao >= seg_str]
-        fat_semana = sum(a.valor_total for a in atends_semana)
-        fat_semana_ate_ontem = sum(a.valor_total for a in atends_semana if a.data_criacao < hoje_str)
-        fat_hoje = sum(a.valor_total for a in atends_semana if a.data_criacao.startswith(hoje_str))
+        fat_semana = db.query(func.sum(Atendimento.valor_total)).filter(Atendimento.data_criacao >= seg_str, Atendimento.data_criacao <= d2_meta.strftime("%Y-%m-%dT23:59:59"), Atendimento.status == "Finalizado").scalar() or 0.0
+        fat_semana_ate_ontem = db.query(func.sum(Atendimento.valor_total)).filter(Atendimento.data_criacao >= seg_str, Atendimento.data_criacao < hoje_str, Atendimento.status == "Finalizado").scalar() or 0.0
+        fat_hoje = db.query(func.sum(Atendimento.valor_total)).filter(Atendimento.data_criacao.like(f"{hoje_str}%"), Atendimento.status == "Finalizado").scalar() or 0.0
         
         # Pesos para cálculo diário
         peso_restante_semana = sum(get_peso(meta_atual, hoje.date() + timedelta(days=i)) for i in range(6 - hoje.weekday()) if d1_meta <= (hoje.date() + timedelta(days=i)) <= d2_meta)
@@ -772,7 +772,7 @@ def render_fast_launch():
     # ==========================================
     elif aba_selecionada == lbl_agenda:
         st.markdown(f"### {gold_icon('calendar')} Serviços Agendados", unsafe_allow_html=True)
-        agendados = db.query(Atendimento).filter(Atendimento.status == "Agendado").order_by(Atendimento.data_agendamento.asc()).all()
+        agendados = agendados_raw # Já buscado no lazy load acima
         
         if not agendados:
             st.info("Nenhum serviço agendado.")
