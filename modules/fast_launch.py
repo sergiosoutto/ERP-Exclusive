@@ -684,7 +684,11 @@ def render_fast_launch():
                 with st.container(border=True):
                     st.markdown(f"<p style='margin:0; font-size:14px; font-weight:600;'>{cli.nome if cli else 'Desconhecido'} <span style='font-size:10px; font-weight:normal; color:var(--text-sec);'>({at.codigo})</span></p>", unsafe_allow_html=True)
                     st.markdown(f"<p style='margin:0; font-size:12px; color:var(--text-sec);'>*{carro_info} | Placa: {placa_info}*</p>", unsafe_allow_html=True)
-                    st.markdown(f"<p style='margin:2px 0 6px 0; font-size:12px;'>{gold_icon('clock')} {dt_str} &nbsp;|&nbsp; <b>R$ {formatar_moeda(total_val)}</b></p>", unsafe_allow_html=True)
+                    
+                    prev_saida = getattr(at, 'hora_prevista_saida', None) or 'Imediato'
+                    cor_prev = '#e74c3c' if prev_saida != 'Imediato' else '#888'
+                    st.markdown(f"<p style='margin:2px 0 0 0; font-size:11px;'>{gold_icon('clock')} Entrada: <b>{dt_str}</b> &nbsp;·&nbsp; <span style='color:{cor_prev}; font-weight:600;'>⏱ Prev. Saída: {prev_saida}</span></p>", unsafe_allow_html=True)
+                    st.markdown(f"<p style='margin:2px 0 6px 0; font-size:13px; font-weight:700;'>R$ {formatar_moeda(total_val)}</p>", unsafe_allow_html=True)
                     
                     # Ações Dinâmicas por Status
                     if at.status in ("Aguardando", "Em Andamento"):
