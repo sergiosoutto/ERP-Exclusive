@@ -607,40 +607,59 @@ def render_fast_launch():
                     hora_agendamento = st.time_input("Hora", value=time(9, 0))
                     
             btn_label = "Agendar Serviço" if is_agendamento else "Enviar para o Pátio"
-            if st.button(btn_label, type="primary", use_container_width=True):
+            
+            # Trava anti-duplo clique
+            salvando = st.session_state.get('os_sendo_salva', False)
+            if salvando:
+                st.warning("⏳ Aguarde, sua OS está sendo registrada...", icon="⏳")
+            
+            if st.button(btn_label, type="primary", use_container_width=True, disabled=salvando):
+                st.session_state['os_sendo_salva'] = True
 
                 if cliente_selecionado and not cliente_selecionado.startswith("--"):
                     cli_id = int(cliente_selecionado.split(" |")[0].replace("#", "").strip())
                     cliente_ref = db.query(Cliente).filter(Cliente.id == cli_id).first()
                     
-                    last_at = db.query(Atendimento).order_by(Atendimento.id.desc()).first()
-                    next_id = (last_at.id + 1) if last_at else 1
-                    codigo_seq = f"OS-{next_id:04d}"
+                    # Verificar se já existe uma OS aberta para este cliente (anti-duplicata)
+                    os_duplicada = db.query(Atendimento).filter(
+                        Atendimento.cliente_id == cli_id,
+                        Atendimento.status.in_(["Aguardando", "Em Andamento", "Lavando", "Pronto"])
+                    ).first()
                     
-                    total_atendimento = valor_final + sum(servicos_extra.values())
-                    
-                    stts = "Agendado" if is_agendamento else "Aguardando"
-                    dt_agend = f"{data_agendamento.isoformat()} {hora_agendamento.strftime('%H:%M')}" if is_agendamento and data_agendamento and hora_agendamento else (data_agendamento.isoformat() if is_agendamento and data_agendamento else None)
-                    novo_at = Atendimento(
-                        codigo=codigo_seq, cliente_id=cliente_ref.id, status=stts,
-                        valor_total=total_atendimento, data_criacao=obter_hora_local().isoformat(),
-                        data_agendamento=dt_agend, hora_prevista_saida=hora_prevista
-                    )
-                    db.add(novo_at)
-                    db.flush()
-                    
-                    if item_selecionado != "Nenhum serviço":
-                        db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=servico_opcoes[item_selecionado].id, valor_cobrado=valor_final))
+                    if os_duplicada and not is_agendamento:
+                        st.error(f"⚠️ Atenção! **{cliente_ref.nome}** já tem a **{os_duplicada.codigo}** aberta no pátio. Finalize-a antes de criar uma nova.")
+                        st.session_state['os_sendo_salva'] = False
+                    else:
+                        last_at = db.query(Atendimento).order_by(Atendimento.id.desc()).first()
+                        next_id = (last_at.id + 1) if last_at else 1
+                        codigo_seq = f"OS-{next_id:04d}"
                         
-                    for s_id, v in servicos_extra.items():
-                        db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=s_id, valor_cobrado=v))
+                        total_atendimento = valor_final + sum(servicos_extra.values())
                         
-                    db.commit()
-                    registrar_log(f"Lançou a {codigo_seq} para {cliente_ref.nome}")
-                    st.session_state['success_msg'] = f"OS {codigo_seq} enviada ao Pátio!"
-                    st.rerun()
+                        stts = "Agendado" if is_agendamento else "Aguardando"
+                        dt_agend = f"{data_agendamento.isoformat()} {hora_agendamento.strftime('%H:%M')}" if is_agendamento and data_agendamento and hora_agendamento else (data_agendamento.isoformat() if is_agendamento and data_agendamento else None)
+                        novo_at = Atendimento(
+                            codigo=codigo_seq, cliente_id=cliente_ref.id, status=stts,
+                            valor_total=total_atendimento, data_criacao=obter_hora_local().isoformat(),
+                            data_agendamento=dt_agend, hora_prevista_saida=hora_prevista
+                        )
+                        db.add(novo_at)
+                        db.flush()
+                        
+                        if item_selecionado != "Nenhum serviço":
+                            db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=servico_opcoes[item_selecionado].id, valor_cobrado=valor_final))
+                            
+                        for s_id, v in servicos_extra.items():
+                            db.add(ItemAtendimento(atendimento_id=novo_at.id, tipo="Serviço", referencia_id=s_id, valor_cobrado=v))
+                            
+                        db.commit()
+                        registrar_log(f"Lançou a {codigo_seq} para {cliente_ref.nome}")
+                        st.session_state['os_sendo_salva'] = False
+                        st.session_state['success_msg'] = f"OS {codigo_seq} enviada ao Pátio!"
+                        st.rerun()
                 else:
                     st.error("Selecione um cliente.")
+                    st.session_state['os_sendo_salva'] = False
 
     # ==========================================
     # ABA 2: PÁTIO (EM ANDAMENTO)
